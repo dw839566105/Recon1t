@@ -131,8 +131,8 @@ def recon(fid, fout):
     '''
     result_total = np.empty((1,4))
     record = np.zeros((1,4))
-    h = h5py.File('../JP_python/version3/calib/coeff.h5','r')
-    coeff = h['coeff'][...]
+    h = h5py.File('../JP_python/version3/calib/coeff_corr.h5','r')
+    coeff = h['coeff_corr'][...]
     f = uproot.open(fid)
     a = f['SimpleAnalysis']
     for tot, chl, PEl, Pkl, nPl in zip(a.array("TotalPE"),
