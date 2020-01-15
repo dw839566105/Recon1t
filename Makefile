@@ -6,7 +6,25 @@
 #program:=Sph_corr
 #program:=Sph_noc
 
+dl:=/mnt/neutrino/02_PreAnalysis/run00000900
+
+-include rl.mk
+
 .PHONY: all
-filepath:=/srv/JinpingData/Jinping_1ton_Data/02_PreAnalysis/run00000900/PreAnalysis_Run900_File0.root
-all:$(filepath)
-	echo 'python3 Recon_$(program).py $(filepath) ./test_notime_nocons.h5 > notime_nocons.log'
+
+nl:=$($(notdir $(dl)))
+
+all: $(nl:%=/mnt/stage/recon/900/%/sph.h5)
+
+/mnt/stage/recon/900/%/sph.h5: $(dl)/PreAnalysis_Run900_File%.root
+	mkdir -p $(dir $@)
+	time python3 Recon_Sph_noc.py $^ $@ > $@.log 2>&1
+
+rl.mk:
+	echo "$(notdir $(dl)):=$(shell ./fl.sh $(dl))" > rl.mk
+
+# Delete partial files when the processes are killed.
+.DELETE_ON_ERROR:
+# Keep intermediate files around
+.SECONDARY:
+
