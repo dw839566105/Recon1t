@@ -61,7 +61,7 @@ def calib(vertex):
     L = - np.sum(np.sum(np.log((expect**y)*np.exp(-expect))))
     return L
 
-def con():
+def con_sph():
     cons = ({'type': 'ineq', 'fun': lambda x: x[0] - 0.01},\
     {'type': 'ineq', 'fun': lambda x: 0.65**2 - (x[1]**2 + x[2]**2+x[3]**2)})
     return cons

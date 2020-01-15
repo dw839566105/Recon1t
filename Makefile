@@ -9,4 +9,4 @@
 .PHONY: all
 filepath:=/srv/JinpingData/Jinping_1ton_Data/02_PreAnalysis/run00000900/PreAnalysis_Run900_File0.root
 all:$(filepath)
-	echo 'python3 Recon_$(program).py $(filepath) ./test_notime_nocons.h5 > notime_nocons.log'
+	python3 Recon_$(program).py $(filepath) ./test_$(program).h5 > $(program).log
