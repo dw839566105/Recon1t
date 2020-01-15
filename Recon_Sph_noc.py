@@ -2,7 +2,7 @@ import numpy as np
 import h5py, sys
 import matplotlib.pyplot as plt
 import tables
-import ROOT, uproot
+import uproot
 from scipy import interpolate
 from numpy.polynomial import legendre as LG
 from scipy.optimize import minimize
@@ -76,9 +76,6 @@ def recon(fid, fout):
     '''
 
     # Create the output file and the group
-
-    rootfile = ROOT.TFile(fid)
-    #TruthChain = rootfile.Get('SimTriggerInfo')
     print(fid)
     '''
     class ChargeData(tables.IsDescription):
@@ -131,7 +128,7 @@ def recon(fid, fout):
     '''
     result_total = np.empty((1,4))
     record = np.zeros((1,4))
-    h = h5py.File('../JP_python/version3/calib/coeff.h5','r')
+    h = h5py.File('../JP_Python/version3/calib/coeff.h5','r')
     coeff = h['coeff'][...]
     f = uproot.open(fid)
     a = f['SimpleAnalysis']
