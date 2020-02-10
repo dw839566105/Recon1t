@@ -52,7 +52,7 @@ def Likelihood_Sph(vertex, *args):
 
         xx = np.arange(-1,1,0.01)
         yy = np.zeros(np.size(xx))
-        yy[37:164] = coeff[:,i]
+        yy[38:163] = coeff[:,i]
         if z>0.99:
             z = 0.99
         elif z<-0.99:
@@ -60,7 +60,7 @@ def Likelihood_Sph(vertex, *args):
         # print(z)
         f = interpolate.interp1d(xx, yy, kind='cubic')
         k[i] = f(z)
-    k[0] = k[0] + np.log(vertex[0])
+    k[0] = vertex[0]
     # print(k) 
     # print('haha')
     expect = np.exp(np.dot(x,k))
@@ -232,7 +232,7 @@ def recon(fid, fout, *args):
         x_sph = tables.Float16Col(pos=8)        # x position
         y_sph = tables.Float16Col(pos=9)        # y position
         z_sph = tables.Float16Col(pos=10)        # z position
-        E_sph = tables.Float16Col(pos=11)        # energy
+        l0_sph = tables.Float16Col(pos=11)        # energy
         success_sph = tables.Int64Col(pos=12)    # recon failure
     # Create the output file and the group
     h5file = tables.open_file(fout, mode="w", title="OneTonDetector",
@@ -285,8 +285,8 @@ def recon(fid, fout, *args):
         x0[0][4] = np.mean(time_array)
         x0[0][5] = 26
         # Constraints
-        E_min = 0.01
-        E_max = 100
+        E_min = -10
+        E_max = 10
         tau_min = 0.01
         tau_max = 100
         t0_min = -300
@@ -296,8 +296,6 @@ def recon(fid, fout, *args):
         # reconstruction
         result = minimize(Likelihood_ML, x0, method='SLSQP', constraints=cons, \
         args = (PMT_pos, pe_array, time_array, fired_PMT))
-        # result
-        print(event_count, result.x, result.success)
 
         recondata['EventID'] = event_count
         recondata['x'] = result.x[1]
@@ -308,7 +306,7 @@ def recon(fid, fout, *args):
         recondata['tau_d'] = result.x[5]
         recondata['success'] = result.success
 
-        h = h5py.File('./calib/coeff.h5','r')
+        h = h5py.File('./calib/coeff/c1.8.h5','r')
         coeff = h['coeff'][...]
         # initial value
         x0 = np.zeros((1,4))
@@ -332,11 +330,10 @@ def recon(fid, fout, *args):
         # result_total = np.vstack((result_total,record))
 
         # result
-        print(event_count, result.x, result.success)
         recondata['x_sph'] = result.x[1]
         recondata['y_sph'] = result.x[2]
         recondata['z_sph'] = result.x[3]
-        recondata['E_sph'] = result.x[0]
+        recondata['l0_sph'] = result.x[0]
         recondata['success_sph'] = result.success
 
         vertex = result.x[1:4]
@@ -349,7 +346,6 @@ def recon(fid, fout, *args):
         time_array = time_array[time_array < Timeleft + 150]
 
         result = minimize(Likelihood_Tau, t0, constraints=cons_t(), method='SLSQP', args = time_array)
-        print(result.x)
         recondata['tau_d'] = result.x[0]
         recondata['t0'] = result.x[1]
         event_count = event_count + 1
