@@ -4,13 +4,13 @@ dl:=/mnt/neutrino/02_PreAnalysis
 
 .PHONY: all
 
-nl:=$(srl-0900)
+sel:=0900 1115 1498 1692 1725 1846
 
-all: $(nl:%=/mnt/stage/recon/900/%/tau.h5)
+all: $(foreach r,$(sel),$(patsubst %,/mnt/stage/recon/$(r)/%/tau.h5,$(srl-$(r))))
 
 define r-tpl
 s:=$(shell echo $(1) | sed 's/^0*//')
-/mnt/stage/recon/$$(s)/%/tau.h5: $(dl)/run0000$(1)/PreAnalysis_Run$$(s)_File%.root
+/mnt/stage/recon/$(1)/%/tau.h5: $(dl)/run0000$(1)/PreAnalysis_Run$$(s)_File%.root
 	mkdir -p $$(dir $$@)
 	time python3 Recon_Tau.py $$^ $$@ > $$@.log 2>&1
 
