@@ -1,6 +1,7 @@
 import numpy as np
 import scipy, h5py
 import scipy.stats as stats
+from scipy.linalg import norm
 import os,sys
 import tables
 import scipy.io as scio
@@ -43,17 +44,35 @@ c = 2.99792e8
 n = 1.48
 shell = 0.65 # Acrylic
 
+def r2c(c):
+    v = np.zeros(3)
+    v[2] = c[0] * np.sin(c[1]) #z
+    rho = c[0] * np.cos(c[1])
+    v[0] = rho * np.cos(c[2]) #x
+    v[1] = rho * np.sin(c[2]) #y
+    return v
+
 def Likelihood_Sph(vertex, *args):
+    '''
+    vertex[1]: r
+    vertex[2]: theta
+    vertex[3]: phi
+    '''
+
     coeff, PMT_pos, event_pe, cut = args
     y = event_pe
-    # fixed axis
-    z = np.sqrt(np.sum(vertex[1:4]**2))
-    cos_theta = np.sum(vertex[1:4]*PMT_pos,axis=1)\
-        /np.sqrt(np.sum(vertex[1:4]**2)*np.sum(PMT_pos**2,axis=1))
-    # accurancy and nan value
-    cos_theta = np.nan_to_num(cos_theta)
-    cos_theta[cos_theta>1] = 1
-    cos_theta[cos_theta<-1] =-1
+    
+    z = abs(vertex[1])
+    if z > shell:
+        return np.inf
+
+    if z<0.001:
+        # assume (0,0,1)
+        cos_theta = PMT_pos[:,2] / norm(PMT_pos,axis=1)
+    else:
+        v = r2c(vertex[1:4])
+        cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
+    
     size = np.size(PMT_pos[:,0])
     x = np.zeros((size, cut))
     # legendre coeff
@@ -72,7 +91,7 @@ def Likelihood_Sph(vertex, *args):
 
     k[0] = vertex[0]
     expect = np.exp(np.dot(x,k))
-    L = - np.sum(np.sum(np.log((expect**y)*np.exp(-expect))))
+    L = - np.sum( y*np.log(expect) - expect )
     return L
 
 def Likelihood_Tau(t0, *args):
@@ -167,34 +186,8 @@ def TimeUncertainty(tc, tau_d):
     
     return p_time
 
-def con(args):
-    E_min,\
-    E_max,\
-    tau_min,\
-    tau_max,\
-    t0_min,\
-    t0_max\
-    = args
-    cons = ({'type': 'ineq', 'fun': lambda x: (x[0] - E_min)*(E_max - x[0])},\
-    {'type': 'ineq', 'fun': lambda x: shell**2 - (x[1]**2 + x[2]**2 + x[3]**2)},\
-    {'type': 'ineq', 'fun': lambda x: (x[5] - tau_min)*(tau_max-x[5])},\
-    {'type': 'ineq', 'fun': lambda x: (x[4] - t0_min)*(t0_max-x[4])})
-    return cons
-
 def cons_t():
     cons = ({'type': 'ineq', 'fun': lambda x: (x[0] - 1)*(100 - x[0])})
-    return cons
-
-def con_sph(args):
-    E_min,\
-    E_max,\
-    tau_min,\
-    tau_max,\
-    t0_min,\
-    t0_max\
-    = args
-    cons = ({'type': 'ineq', 'fun': lambda x: (x[0] - E_min)*(E_max - x[0])},\
-    {'type': 'ineq', 'fun': lambda x: shell**2 - (x[1]**2 + x[2]**2 + x[3]**2)})
     return cons
 
 def recon_drc(time_array, fired_PMT, recon_vertex):
@@ -230,13 +223,8 @@ def recon(fid, fout, *args):
     print(fid) # filename
     class ReconData(tables.IsDescription):
         EventID = tables.Int64Col(pos=0)    # EventNo
-        x = tables.Float16Col(pos=1)        # x position
-        y = tables.Float16Col(pos=2)        # y position
-        z = tables.Float16Col(pos=3)        # z position
         t0 = tables.Float16Col(pos=4)       # time offset
-        E = tables.Float16Col(pos=5)        # energy
         tau_d = tables.Float16Col(pos=6)    # decay time constant
-        success = tables.Int64Col(pos=7)    # recon failure
         x_sph = tables.Float16Col(pos=8)        # x position
         y_sph = tables.Float16Col(pos=9)        # y position
         z_sph = tables.Float16Col(pos=10)        # z position
@@ -298,21 +286,18 @@ def recon(fid, fout, *args):
         theta0[1] = x0[0][1]
         theta0[2] = x0[0][2]
         theta0[3] = x0[0][3]
-
-        if(np.sqrt(np.sum(theta0**2))>0.65:
-                theta0 = theta0/np.sqrt(np.sum(theta0**2))*0.65
-
-        con_args = E_min, E_max, tau_min, tau_max, t0_min, t0_max
-        cons_sph = con_sph(con_args)
         record = np.zeros((1,4))
-        result = minimize(Likelihood_Sph, theta0, method='SLSQP',constraints=cons_sph, args = (coeff, PMT_pos, pe_array, cut))
+        result = minimize(Likelihood_Sph, theta0, method='SLSQP', bounds=((E_min, E_max), (-shell-0.01, shell+0.01), (None, None), (None, None)), 
+                          args = (coeff, PMT_pos, pe_array, cut))
         # record[0,:] = np.array(result.x, dtype=float)
         # result_total = np.vstack((result_total,record))
 
+        v = r2c(result.x[1:4])
+
         # result
-        recondata['x_sph'] = result.x[1]
-        recondata['y_sph'] = result.x[2]
-        recondata['z_sph'] = result.x[3]
+        recondata['x_sph'] = v[0]
+        recondata['y_sph'] = v[1]
+        recondata['z_sph'] = v[2]
         recondata['l0_sph'] = result.x[0]
         recondata['success_sph'] = result.success
 
