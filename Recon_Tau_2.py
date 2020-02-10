@@ -66,8 +66,6 @@ def Likelihood_Sph(vertex, *args):
     #print(np.size(coeff[0,:]))
     for i in np.arange(cut):
         # cubic interp
-        if(np.abs(z)>0.65):
-            z = 0.65*np.sign(z)
         k[i] = func_list[i](z)
 
     k[0] = k[0] + np.log(vertex[0])
@@ -336,6 +334,9 @@ def recon(fid, fout, *args):
         theta0[1] = x0[0][1]
         theta0[2] = x0[0][2]
         theta0[3] = x0[0][3]
+
+        if(np.sqrt(np.sum(theta0**2))>0.65):
+            theta0 = theta0/np.sqrt(np.sum(theta0**2))*0.65
         con_args = E_min, E_max, tau_min, tau_max, t0_min, t0_max
         cons_sph = con_sph(con_args)
         record = np.zeros((1,4))
