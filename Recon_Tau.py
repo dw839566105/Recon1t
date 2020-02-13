@@ -256,6 +256,8 @@ def recon(fid, fout, *args):
         fired_PMT = np.zeros(0)     # Hit PMT (PMT Seq can be repeated)
         time_array = np.zeros(0, dtype=int)    # Time info (Hit number)
         for ch, pe, pk, npk in zip(chl, PEl, Pkl, nPl):
+            if ch >= 30:
+                continue
             pe_array[ch] = pe
             time_array = np.hstack((time_array, pk))
             fired_PMT = np.hstack((fired_PMT, ch*np.ones(np.size(pk))))
