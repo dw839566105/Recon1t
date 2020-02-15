@@ -14,7 +14,7 @@ define r-tpl
 s:=$(shell echo $(1) | sed 's/^0*//')
 $(rd)/$(1)/%/tau.h5: $(dl)/run0000$(1)/PreAnalysis_Run$$(s)_File%.root
 	mkdir -p $$(dir $$@)
-	time python3 Recon_Tau.py $$^ $$@ > $$@.log 2>&1
+	time python3 Recon_Tau.py $$^ -o $$@ > $$@.log 2>&1
 
 $(rd)/$(1)/es.pdf: $(srl-$(1):%=$(rd)/$(1)/%/tau.h5)
 	python3 es.py -o $$@ $$^

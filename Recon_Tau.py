@@ -210,9 +210,69 @@ def ReadPMT():
     PMT_pos = np.array(data_list)
     return PMT_pos
 
-def recon(fid, fout, *args):
-    PMT_pos, event_count = args
-    # global event_count,shell,PE,time_array,PMT_pos, fired_PMT
+def fit(pe_array, time_array, fired_PMT, PMT_pos, recondata):
+    result_vertex = np.empty((0,6)) # reconstructed vertex
+    # initial value x[0] = [1,6]
+
+    # Constraints
+    E_min = -10
+    E_max = 10
+    tau_min = 0.01
+    tau_max = 100
+    t0_min = -300
+    t0_max = 300
+
+    # initial value
+    x0 = np.zeros((1,4))
+    x0[0][0] = pe_array.sum()/300
+    x0[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)
+    x0[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)
+    x0[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)
+
+    # Constraints
+    # x0 = np.sum(PE*PMT_pos,axis=0)/np.sum(PE)
+    theta0 = np.array([1,0.1,0.1,0.1])
+    theta0[0] = x0[0][0]
+    theta0[1] = x0[0][1]
+    theta0[2] = x0[0][2]
+    theta0[3] = x0[0][3]
+    record = np.zeros((1,4))
+    result = minimize(Likelihood_Sph, theta0, method='SLSQP', bounds=((E_min, E_max), (-shell-0.01, shell+0.01), (None, None), (None, None)), 
+                      args = (coeff, PMT_pos, pe_array, cut))
+    # record[0,:] = np.array(result.x, dtype=float)
+    # result_total = np.vstack((result_total,record))
+
+    v = r2c(result.x[1:4])
+
+    # result
+    recondata['x_sph'] = v[0]
+    recondata['y_sph'] = v[1]
+    recondata['z_sph'] = v[2]
+    recondata['l0_sph'] = result.x[0]
+    recondata['success_sph'] = result.success
+
+    vertex = result.x[1:4]
+    dis = np.sqrt(np.sum((PMT_pos - vertex)**2, axis=1))
+    time_array = time_array - dis[fired_PMT ]/3e8/1.5*1e9
+    t0 = np.array((26, np.mean(time_array)))
+    try:
+        Timeleft = np.min(time_array[time_array > np.mean(time_array)-100])
+        time_array = time_array[time_array > Timeleft]
+        time_array = time_array[time_array < Timeleft + 150]
+
+        result = minimize(Likelihood_Tau, t0, constraints=cons_t(), method='SLSQP', args = time_array)
+        # print(result.x)
+        recondata['tau_d'] = result.x[0]
+        recondata['t0'] = result.x[1]
+    except:
+        recondata['tau_d'] = 26
+        recondata['t0'] = -1
+
+    recondata.append()
+
+def recon(fid, fout, PMT_pos):
+    PMT_pos
+    # global shell,PE,time_array,PMT_pos, fired_PMT
     '''
     reconstruction
 
@@ -247,15 +307,13 @@ def recon(fid, fout, *args):
     '''
     f = uproot.open(fid)
     a = f['SimpleAnalysis']
-    for tot, chl, PEl, Pkl, nPl in zip(a.array("TotalPE"),
-                    a.array("ChannelInfo.ChannelId"),
-                    a.array("ChannelInfo.PE"),
-                    a.array("ChannelInfo.PeakLoc"),
-                    a.array("ChannelInfo.nPeaks")):
+    for chl, PEl, Pkl in zip(a.array("ChannelInfo.ChannelId"),
+                            a.array("ChannelInfo.PE"),
+                            a.array("ChannelInfo.PeakLoc")):
         pe_array = np.zeros(np.size(PMT_pos[:,1])) # Photons on each PMT (PMT size * 1 vector)
         fired_PMT = np.zeros(0)     # Hit PMT (PMT Seq can be repeated)
         time_array = np.zeros(0, dtype=int)    # Time info (Hit number)
-        for ch, pe, pk, npk in zip(chl, PEl, Pkl, nPl):
+        for ch, pe, pk in zip(chl, PEl, Pkl):
             if ch >= 30:
                 continue
             pe_array[ch] = pe
@@ -263,65 +321,8 @@ def recon(fid, fout, *args):
             fired_PMT = np.hstack((fired_PMT, ch*np.ones(np.size(pk))))
         fired_PMT = fired_PMT.astype(int)
         # initial result
-        result_vertex = np.empty((0,6)) # reconstructed vertex
-        # initial value x[0] = [1,6]
 
-        # Constraints
-        E_min = -10
-        E_max = 10
-        tau_min = 0.01
-        tau_max = 100
-        t0_min = -300
-        t0_max = 300
-
-        # initial value
-        x0 = np.zeros((1,4))
-        x0[0][0] = pe_array.sum()/300
-        x0[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)
-        x0[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)
-        x0[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)
-
-        # Constraints
-        # x0 = np.sum(PE*PMT_pos,axis=0)/np.sum(PE)
-        theta0 = np.array([1,0.1,0.1,0.1])
-        theta0[0] = x0[0][0]
-        theta0[1] = x0[0][1]
-        theta0[2] = x0[0][2]
-        theta0[3] = x0[0][3]
-        record = np.zeros((1,4))
-        result = minimize(Likelihood_Sph, theta0, method='SLSQP', bounds=((E_min, E_max), (-shell-0.01, shell+0.01), (None, None), (None, None)), 
-                          args = (coeff, PMT_pos, pe_array, cut))
-        # record[0,:] = np.array(result.x, dtype=float)
-        # result_total = np.vstack((result_total,record))
-
-        v = r2c(result.x[1:4])
-
-        # result
-        recondata['x_sph'] = v[0]
-        recondata['y_sph'] = v[1]
-        recondata['z_sph'] = v[2]
-        recondata['l0_sph'] = result.x[0]
-        recondata['success_sph'] = result.success
-
-        vertex = result.x[1:4]
-        dis = np.sqrt(np.sum((PMT_pos - vertex)**2, axis=1))
-        time_array = time_array - dis[fired_PMT ]/3e8/1.5*1e9
-        t0 = np.array((26, np.mean(time_array)))
-        try:
-            Timeleft = np.min(time_array[time_array > np.mean(time_array)-100])
-            time_array = time_array[time_array > Timeleft]
-            time_array = time_array[time_array < Timeleft + 150]
-
-            result = minimize(Likelihood_Tau, t0, constraints=cons_t(), method='SLSQP', args = time_array)
-            # print(result.x)
-            recondata['tau_d'] = result.x[0]
-            recondata['t0'] = result.x[1]
-        except:
-            recondata['tau_d'] = 26
-            recondata['t0'] = -1
-
-        event_count = event_count + 1
-        recondata.append()
+        fit(pe_array, time_array, fired_PMT, PMT_pos, recondata)
 
     # Flush into the output file
     ReconTable.flush()
@@ -329,17 +330,9 @@ def recon(fid, fout, *args):
 
 # Automatically add multiple root files created a program with max tree size limitation.
 
-if len(sys.argv)!=3:
-    print("Wront arguments!")
-    print("Usage: python Recon.py MCFileName[.root] outputFileName[.h5]")
-    sys.exit(1)
+psr = argparse.ArgumentParser()
+psr.add_argument("-o", dest='opt', help="output")
+psr.add_argument('ipt', help="input and selection table output")
+args = psr.parse_args()
 
-
-# Read PMT position
-PMT_pos = ReadPMT()
-event_count = 0
-# Reconstruction
-fid = sys.argv[1] # input file .root
-fout = sys.argv[2] # output file .h5
-args = PMT_pos, event_count
-recon(fid, fout, *args)
+recon(args.ipt, args.opt, ReadPMT())
