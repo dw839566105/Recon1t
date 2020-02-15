@@ -42,7 +42,6 @@ def Likelihood(fit, *args):
     # log Poisson # p_pe = - np.log(stats.poisson.pmf(PE, expect))
     log_p_pe = - expect + pe_array*np.log(expect) 
     # this part is nonsense {- np.log(special.factorial(pe_array))}
-    log_p_pe[29] = 0
     Likelihood_pe = - np.nansum(log_p_pe)
     # log Time profile pdf
     # log_p_time = TimeProfile(time_array, distance[fired_PMT], tau_d, t)
@@ -148,9 +147,7 @@ def con(args):
     t0_max\
     = args
     cons = ({'type': 'ineq', 'fun': lambda x: (x[0] - E_min)*(E_max - x[0])},\
-    {'type': 'ineq', 'fun': lambda x: shell**2 - (x[1]**2 + x[2]**2 + x[3]**2)},\
-    {'type': 'ineq', 'fun': lambda x: (x[5] - tau_min)*(tau_max-x[5])},\
-    {'type': 'ineq', 'fun': lambda x: (x[4] - t0_min)*(t0_max-x[4])})
+    {'type': 'ineq', 'fun': lambda x: shell**2 - (x[1]**2 + x[2]**2 + x[3]**2)})
     return cons
 
 def recon_drc(time_array, fired_PMT, recon_vertex):
@@ -174,7 +171,8 @@ def ReadPMT():
     return PMT_pos
 
 def recon(fid, fout, *args):
-    PMT_pos, event_count = args
+    PMT_pos, event_count, shut = args
+    shut = eval(shut)
     # global event_count,shell,PE,time_array,PMT_pos, fired_PMT
     '''
     reconstruction
@@ -187,13 +185,18 @@ def recon(fid, fout, *args):
     print(fid) # filename
     class ReconData(tables.IsDescription):
         EventID = tables.Int64Col(pos=0)    # EventNo
-        x = tables.Float16Col(pos=1)        # x position
-        y = tables.Float16Col(pos=2)        # y position
-        z = tables.Float16Col(pos=3)        # z position
-        t0 = tables.Float16Col(pos=4)       # time offset
-        E = tables.Float16Col(pos=5)        # energy
-        tau_d = tables.Float16Col(pos=6)    # decay time constant
-        success = tables.Int64Col(pos=7)    # recon failure
+        x1 = tables.Float16Col(pos=1)        # x position
+        y1 = tables.Float16Col(pos=2)        # y position
+        z1 = tables.Float16Col(pos=3)        # z position
+        x2 = tables.Float16Col(pos=4)        # x position
+        y2 = tables.Float16Col(pos=5)        # y position
+        z2 = tables.Float16Col(pos=6)        # z position
+        x3 = tables.Float16Col(pos=7)        # x position
+        y3 = tables.Float16Col(pos=8)        # y position
+        z3 = tables.Float16Col(pos=9)        # z position
+        x4 = tables.Float16Col(pos=10)        # x position
+        y4 = tables.Float16Col(pos=11)        # y position
+        z4 = tables.Float16Col(pos=12)        # z position
     # Create the output file and the group
     h5file = tables.open_file(fout, mode="w", title="OneTonDetector",
                             filters = tables.Filters(complevel=9))
@@ -225,8 +228,14 @@ def recon(fid, fout, *args):
         x0[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)
         x0[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)
         x0[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)
-        x0[0][4] = np.mean(time_array)
-        x0[0][5] = 26
+        # cut 1 PMT
+        x1 = np.zeros((1,6))
+        pe_array_tmp = pe_array
+        # pe_array_tmp[shut] = 0
+        x1[0][0] = pe_array.sum()/300
+        x1[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)
+        x1[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)
+        x1[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)
         # Constraints
         E_min = 0.01
         E_max = 100
@@ -237,28 +246,34 @@ def recon(fid, fout, *args):
         con_args = E_min, E_max, tau_min, tau_max, t0_min, t0_max
         cons = con(con_args)
         # reconstruction
-        result = minimize(Likelihood, x0, method='SLSQP', constraints=cons, \
+        result1 = minimize(Likelihood, x0, method='SLSQP', constraints=cons, \
         args = (PMT_pos, pe_array, time_array, fired_PMT))
+        # result2 = minimize(Likelihood, x1, method='SLSQP', constraints=cons, \
+        # args = (PMT_pos, pe_array_tmp, time_array, fired_PMT))
         # result
-        print(event_count, result.x, result.success)
         event_count = event_count + 1
         recondata['EventID'] = event_count
-        recondata['x'] = result.x[1]
-        recondata['y'] = result.x[2]
-        recondata['z'] = result.x[3]
-        recondata['E'] = result.x[0]
-        recondata['t0'] = result.x[4]
-        recondata['tau_d'] = result.x[5]
-        recondata['success'] = result.success
+        recondata['x1'] = result1.x[1]
+        recondata['y1'] = result1.x[2]
+        recondata['z1'] = result1.x[3]
+        #recondata['x2'] = result2.x[1]
+        #recondata['y2'] = result2.x[2]
+        #recondata['z2'] = result2.x[3]
+        recondata['x3'] = x0[0][1]
+        recondata['y3'] = x0[0][2]
+        recondata['z3'] = x0[0][3]
+        recondata['x4'] = x1[0][1]
+        recondata['y4'] = x1[0][2]
+        recondata['z4'] = x1[0][3]
         recondata.append()
     # Flush into the output file
     ReconTable.flush()
     h5file.close()
 
 # Automatically add multiple root files created a program with max tree size limitation.
-if len(sys.argv)!=3:
+if len(sys.argv)!=4:
     print("Wront arguments!")
-    print("Usage: python Recon.py MCFileName[.root] outputFileName[.h5]")
+    print("Usage: python Recon.py MCFileName[.root] outputFileName[.h5] shut")
     sys.exit(1)
 # Read PMT position
 PMT_pos = ReadPMT()
@@ -268,5 +283,6 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 # Reconstruction
 fid = sys.argv[1] # input file .root
 fout = sys.argv[2] # output file .h5
-args = PMT_pos, event_count
+shut = sys.argv[3]
+args = PMT_pos, event_count, shut
 recon(fid, fout, *args)

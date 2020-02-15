@@ -10,26 +10,6 @@ from scipy.optimize import minimize
 from scipy import interpolate
 from numpy.polynomial import legendre as LG
 from scipy import special
-from Readlog import coeff3d
-# coeff3d
-EE_tmp, radius, coeff = coeff3d()
-EE = np.zeros(len(EE_tmp))
-for i in np.arange(len(EE)):
-    EE[i] = eval(EE_tmp[i])
-EE[-1] = 10
-cut = np.size(coeff[0,:,0])
-
-func_list = []
-for i in np.arange(cut):
-    # cubic interp
-    xx = radius
-    yy = coeff[:,i,-1]
-    f = interpolate.interp1d(xx, yy, kind='cubic')
-    func_list.append(f)
-
-EE_tmp = np.hstack((0.1,EE))
-EE_value = coeff[np.int((np.size(radius)-1)/2),0,:]
-EE_value = np.hstack((EE_value[0],EE_value))
 
 # physical constant
 Light_yield = 4285*0.88 # light yield
@@ -62,14 +42,27 @@ def Likelihood_Sph(vertex, *args):
         c[i] = 1
         x[:,i] = LG.legval(cos_theta,c)
 
-    k = np.zeros((np.size(coeff[0,:,0])))
+    k = np.zeros((np.size(coeff[0,:])))
     #print(np.size(coeff[0,:]))
-    for i in np.arange(cut):
+    for i in np.arange(0,np.size(coeff[0,:])):
+        # polyfit
+        # fitfun = np.poly1d(coeff[:,i])
+        # k[i] = fitfun(z)
         # cubic interp
-        k[i] = func_list[i](z)
 
-    k[0] = k[0] + np.log(vertex[0])
+        xx = np.arange(-1,1,0.01)
+        yy = np.zeros(np.size(xx))
+        yy[38:163] = coeff[:,i]
+        if z>0.99:
+            z = 0.99
+        elif z<-0.99:
+            z = -0.99
+        # print(z)
+        f = interpolate.interp1d(xx, yy, kind='cubic')
+        k[i] = f(z)
     k[0] = vertex[0]
+    # print(k) 
+    # print('haha')
     expect = np.exp(np.dot(x,k))
     L = - np.sum(np.sum(np.log((expect**y)*np.exp(-expect))))
     return L
@@ -239,7 +232,7 @@ def recon(fid, fout, *args):
         x_sph = tables.Float16Col(pos=8)        # x position
         y_sph = tables.Float16Col(pos=9)        # y position
         z_sph = tables.Float16Col(pos=10)        # z position
-        E_sph = tables.Float16Col(pos=11)        # energy
+        l0_sph = tables.Float16Col(pos=11)        # energy
         success_sph = tables.Int64Col(pos=12)    # recon failure
     # Create the output file and the group
     h5file = tables.open_file(fout, mode="w", title="OneTonDetector",
@@ -284,7 +277,6 @@ def recon(fid, fout, *args):
         # initial result
         result_vertex = np.empty((0,6)) # reconstructed vertex
         # initial value x[0] = [1,6]
-        '''
         x0 = np.zeros((1,6))
         x0[0][0] = pe_array.sum()/300
         x0[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)
@@ -292,7 +284,6 @@ def recon(fid, fout, *args):
         x0[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)
         x0[0][4] = np.mean(time_array)
         x0[0][5] = 26
-        '''
         # Constraints
         E_min = -10
         E_max = 10
@@ -300,17 +291,13 @@ def recon(fid, fout, *args):
         tau_max = 100
         t0_min = -300
         t0_max = 300
-
-        '''
         con_args = E_min, E_max, tau_min, tau_max, t0_min, t0_max
         cons = con(con_args)
         # reconstruction
         result = minimize(Likelihood_ML, x0, method='SLSQP', constraints=cons, \
         args = (PMT_pos, pe_array, time_array, fired_PMT))
-        # result
-        # print(event_count, result.x, result.success)
 
-        recodndata['EventID'] = event_count
+        recondata['EventID'] = event_count
         recondata['x'] = result.x[1]
         recondata['y'] = result.x[2]
         recondata['z'] = result.x[3]
@@ -318,8 +305,9 @@ def recon(fid, fout, *args):
         recondata['t0'] = result.x[4]
         recondata['tau_d'] = result.x[5]
         recondata['success'] = result.success
-        '''
 
+        h = h5py.File('./calib/coeff/c1.8.h5','r')
+        coeff = h['coeff'][...]
         # initial value
         x0 = np.zeros((1,4))
         x0[0][0] = pe_array.sum()/300
@@ -335,8 +323,9 @@ def recon(fid, fout, *args):
         theta0[2] = x0[0][2]
         theta0[3] = x0[0][3]
 
-        if(np.sqrt(np.sum(theta0**2))>0.65):
-            theta0 = theta0/np.sqrt(np.sum(theta0**2))*0.65
+        if(np.sqrt(np.sum(theta0**2))>0.65:
+                theta0 = theta0/np.sqrt(np.sum(theta0**2))*0.65
+
         con_args = E_min, E_max, tau_min, tau_max, t0_min, t0_max
         cons_sph = con_sph(con_args)
         record = np.zeros((1,4))
@@ -345,33 +334,25 @@ def recon(fid, fout, *args):
         # result_total = np.vstack((result_total,record))
 
         # result
-        # print(event_count, result.x, result.success)
         recondata['x_sph'] = result.x[1]
         recondata['y_sph'] = result.x[2]
         recondata['z_sph'] = result.x[3]
-        recondata['E_sph'] = result.x[0]
+        recondata['l0_sph'] = result.x[0]
         recondata['success_sph'] = result.success
 
         vertex = result.x[1:4]
         dis = np.sqrt(np.sum((PMT_pos - vertex)**2, axis=1))
         time_array = time_array - dis[fired_PMT ]/3e8/1.5*1e9
         t0 = np.array((26, np.mean(time_array)))
-        try:
-            Timeleft = np.min(time_array[time_array > np.mean(time_array)-100])
-            time_array = time_array[time_array > Timeleft]
-            time_array = time_array[time_array < Timeleft + 150]
 
-            result = minimize(Likelihood_Tau, t0, constraints=cons_t(), method='SLSQP', args = time_array)
-            # print(result.x)
-            recondata['tau_d'] = result.x[0]
-            recondata['t0'] = result.x[1]
-        except:
-            recondata['tau_d'] = 26
-            recondata['t0'] = -1
+        Timeleft = np.min(time_array[time_array > np.mean(time_array)-100])
+        time_array = time_array[time_array > Timeleft]
+        time_array = time_array[time_array < Timeleft + 150]
 
+        result = minimize(Likelihood_Tau, t0, constraints=cons_t(), method='SLSQP', args = time_array)
+        recondata['tau_d'] = result.x[0]
+        recondata['t0'] = result.x[1]
         event_count = event_count + 1
-        if(event_count%100==0):
-            print(event_count)
         recondata.append()
 
     # Flush into the output file
@@ -389,6 +370,7 @@ if len(sys.argv)!=3:
 # Read PMT position
 PMT_pos = ReadPMT()
 event_count = 0
+cut = 7
 # Reconstruction
 fid = sys.argv[1] # input file .root
 fout = sys.argv[2] # output file .h5
