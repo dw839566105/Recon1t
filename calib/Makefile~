@@ -1,0 +1,20 @@
+.PHONY: all
+
+E:=$(wildcard *MeV)
+radius:=$(shell seq -f '%+.2f' -0.63 0.01 0.63)
+
+$(foreach x ,$(E), \
+	$(foreach y ,$(radius), \
+		$(shell mkdir -p coeff \
+		mkdir -p coeff/$(x) \
+		)))
+		
+src:=$(foreach x ,$(E), \
+	$(foreach y ,$(radius), \
+		$(shell echo $(x) $(y) coeff/$(x)/file_$(y).h5)))
+
+all:
+	echo $(src)
+
+%.h5:
+	echo python3 $@

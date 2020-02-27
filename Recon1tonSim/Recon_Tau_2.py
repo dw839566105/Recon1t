@@ -11,6 +11,10 @@ from scipy import interpolate
 from numpy.polynomial import legendre as LG
 from scipy import special
 from Readlog import coeff3d
+import warnings
+
+warnings.filterwarnings('ignore')
+
 # coeff3d
 EE_tmp, radius, coeff = coeff3d()
 EE = np.zeros(len(EE_tmp))
@@ -23,7 +27,7 @@ func_list = []
 for i in np.arange(cut):
     # cubic interp
     xx = radius
-    yy = coeff[:,i,-1]
+    yy = coeff[:,i,1]
     f = interpolate.interp1d(xx, yy, kind='cubic')
     func_list.append(f)
 
@@ -41,7 +45,7 @@ QE = 0.20
 PMT_radius = 0.254
 c = 2.99792e8
 n = 1.48
-shell = 0.65 # Acrylic
+shell = 0.6 # Acrylic
 
 def Likelihood_Sph(vertex, *args):
     coeff, PMT_pos, event_pe, cut = args
@@ -69,9 +73,9 @@ def Likelihood_Sph(vertex, *args):
         if(np.abs(z)>0.65):
             z = 0.65*np.sign(z)
         k[i] = func_list[i](z)
-
+    # vertex[0] = 1.2
     k[0] = k[0] + np.log(vertex[0])
-    k[0] = vertex[0]
+    # k[0] = vertex[0]
     expect = np.exp(np.dot(x,k))
     L = - np.sum(np.sum(np.log((expect**y)*np.exp(-expect))))
     return L
@@ -98,13 +102,13 @@ def Likelihood_ML(fit, *args):
     Energy,\
     x,\
     y,\
-    z,\
-    t,\
-    tau_d\
+    z\
     = fit
-    PMT_pos, pe_array, time_array, fired_PMT = args
+    PMT_pos, pe_array = args
     distance, Omega = SolidAngle(x,y,z)
-    lmbd = Att(x,y,z)
+    # lmbd = Att(x,y,z)
+    # lmbd[lmbd>=1] = 1
+    lmbd = 1
     # expect photons
     expect = Energy*\
         Light_yield*\
@@ -177,9 +181,7 @@ def con(args):
     t0_max\
     = args
     cons = ({'type': 'ineq', 'fun': lambda x: (x[0] - E_min)*(E_max - x[0])},\
-    {'type': 'ineq', 'fun': lambda x: shell**2 - (x[1]**2 + x[2]**2 + x[3]**2)},\
-    {'type': 'ineq', 'fun': lambda x: (x[5] - tau_min)*(tau_max-x[5])},\
-    {'type': 'ineq', 'fun': lambda x: (x[4] - t0_min)*(t0_max-x[4])})
+    {'type': 'ineq', 'fun': lambda x: shell**2 - (x[1]**2 + x[2]**2 + x[3]**2)})
     return cons
 
 def cons_t():
@@ -243,6 +245,11 @@ def recon(fid, fout, *args):
         z_sph = tables.Float16Col(pos=10)        # z position
         E_sph = tables.Float16Col(pos=11)        # energy
         success_sph = tables.Int64Col(pos=12)    # recon failure
+        
+        x_truth = tables.Float16Col(pos=13)        # x position
+        y_truth = tables.Float16Col(pos=14)        # y position
+        z_truth = tables.Float16Col(pos=15)        # z position
+        E_truth = tables.Float16Col(pos=16)        # z position
     # Create the output file and the group
     h5file = tables.open_file(fout, mode="w", title="OneTonDetector",
                             filters = tables.Filters(complevel=9))
@@ -259,12 +266,13 @@ def recon(fid, fout, *args):
     Time = rawdata[:]['Time']
     '''
     f = uproot.open(fid)
-    a = f['SimpleAnalysis']
-    for tot, chl, PEl, Pkl, nPl in zip(a.array("TotalPE"),
-                    a.array("ChannelInfo.ChannelId"),
-                    a.array("ChannelInfo.PE"),
-                    a.array("ChannelInfo.PeakLoc"),
-                    a.array("ChannelInfo.nPeaks")):
+    a = f['SimTriggerInfo']
+    for chl, Pkl, xt, yt, zt, Et in zip(a.array("PEList.PMTId"),
+                    a.array("PEList.HitSec"),
+                    a.array("truthList.x"),
+                    a.array("truthList.y"),
+                    a.array("truthList.z"),
+                    a.array("truthList.EkMerged")):
         '''
         for i in np.arange(np.max(EventID)):
             event_count = event_count + 1
@@ -278,56 +286,56 @@ def recon(fid, fout, *args):
         pe_array = np.zeros(np.size(PMT_pos[:,1])) # Photons on each PMT (PMT size * 1 vector)
         fired_PMT = np.zeros(0)     # Hit PMT (PMT Seq can be repeated)
         time_array = np.zeros(0, dtype=int)    # Time info (Hit number)
-        for ch, pe, pk, npk in zip(chl, PEl, Pkl, nPl):
+        for ch, pk in zip(chl, Pkl):
             try:
-                pe_array[ch] = pe
+                pe_array[ch] = pe_array[ch]+1
                 time_array = np.hstack((time_array, pk))
                 fired_PMT = np.hstack((fired_PMT, ch*np.ones(np.size(pk))))
             except:
                 pass
+        
+        # print(pe_array)
+        
         fired_PMT = fired_PMT.astype(int)
         # initial result
         result_vertex = np.empty((0,6)) # reconstructed vertex
         # initial value x[0] = [1,6]
-        '''
-        x0 = np.zeros((1,6))
-        x0[0][0] = pe_array.sum()/300
+        
+        x0 = np.zeros((1,4))
+        x0[0][0] = pe_array.sum()/60
         x0[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)
         x0[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)
         x0[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)
-        x0[0][4] = np.mean(time_array)
-        x0[0][5] = 26
-        '''
         # Constraints
-        E_min = -10
+        E_min = 0.01
         E_max = 10
         tau_min = 0.01
         tau_max = 100
         t0_min = -300
         t0_max = 300
-
-        '''
+        
+        recondata['x_truth'] = xt
+        recondata['y_truth'] = yt
+        recondata['z_truth'] = zt
+        recondata['E_truth'] = Et
+        
         con_args = E_min, E_max, tau_min, tau_max, t0_min, t0_max
         cons = con(con_args)
         # reconstruction
         result = minimize(Likelihood_ML, x0, method='SLSQP', constraints=cons, \
-        args = (PMT_pos, pe_array, time_array, fired_PMT))
+        args = (PMT_pos, pe_array))
         # result
-        # print(event_count, result.x, result.success)
-
-        recodndata['EventID'] = event_count
+        # print(result.x)
+        recondata['EventID'] = event_count
         recondata['x'] = result.x[1]
         recondata['y'] = result.x[2]
         recondata['z'] = result.x[3]
         recondata['E'] = result.x[0]
-        recondata['t0'] = result.x[4]
-        recondata['tau_d'] = result.x[5]
         recondata['success'] = result.success
-        '''
 
         # initial value
         x0 = np.zeros((1,4))
-        x0[0][0] = pe_array.sum()/300
+        x0[0][0] = pe_array.sum()/60
         x0[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)
         x0[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)
         x0[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)
@@ -345,12 +353,19 @@ def recon(fid, fout, *args):
         con_args = E_min, E_max, tau_min, tau_max, t0_min, t0_max
         cons_sph = con_sph(con_args)
         record = np.zeros((1,4))
-        result = minimize(Likelihood_Sph, theta0, method='SLSQP',constraints=cons_sph, args = (coeff, PMT_pos, pe_array, cut))
-        # record[0,:] = np.array(result.x, dtype=float)
-        # result_total = np.vstack((result_total,record))
+        result1 = minimize(Likelihood_Sph, theta0, method='SLSQP',constraints=cons_sph, args = (coeff, PMT_pos, pe_array, cut))
+        #print(theta0, result1.x, result1.fun)
+        theta1 = theta0;
+        theta1[1::] = theta1[1::]/np.sqrt(np.sum(theta1[1::]**2))*0.50
+        result2 = minimize(Likelihood_Sph, theta1, method='SLSQP',constraints=cons_sph, args = (coeff, PMT_pos, pe_array, cut))
 
-        # result
-        # print(event_count, result.x, result.success)
+        #print(theta1, result2.x, result2.fun)
+        #exit()
+        if result1.fun < result2.fun:
+            result = result1
+        else:
+            result = result2
+        #print(result.x)
         recondata['x_sph'] = result.x[1]
         recondata['y_sph'] = result.x[2]
         recondata['z_sph'] = result.x[3]
@@ -375,8 +390,6 @@ def recon(fid, fout, *args):
             recondata['t0'] = -1
 
         event_count = event_count + 1
-        if(event_count%100==0):
-            print(event_count)
         recondata.append()
 
     # Flush into the output file

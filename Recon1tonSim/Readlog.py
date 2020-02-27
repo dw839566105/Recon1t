@@ -10,13 +10,14 @@ def coeff3d():
     new_cell = np.zeros([len(radius), 7, len(logs)])
     print(new_cell.shape)
     for i in range(len(logs)):
-        filename = './calib/logs/c' + logs[i] + '.h5'
+        filename = '../calib/logs/c' + logs[i] + '.h5'
         print(filename)
         h = tables.open_file(filename,'r')
         recondata = h.root.coeff
         x_axis = h.root.x
         coeff_x = np.array(recondata[:])
         x = np.array(x_axis[:])
+        h.close()
         for j in np.arange(len(coeff_x[0,])):
             if i == 0:
                 coeff_x[0,0] = 0

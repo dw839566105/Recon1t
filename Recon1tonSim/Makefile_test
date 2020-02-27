@@ -1,13 +1,14 @@
 .PHONY: all
 
-shut:=$(shell echo {0..0})
-dst:=$(shut:%=temp%.h5)
-
+#sim:=$(wildcard data/*.root)
+sim:=$(wildcard ../calib/1.2MeV/*.root)
+#dst:=$(sim:data/%.root=result/%.h5)
+dst:=$(sim:../calib/1.2MeV/%.root=result/%.h5)
 all:$(dst)
 
-temp%.h5:
-	mkdir -p shut
-	python3 Recon_test.py /srv/JinpingData/Jinping_1ton_Data/02_PreAnalysis/run00000900/PreAnalysis_Run900_File0.root $@ $*
+result/%.h5:../calib/1.2MeV/%.root
+	mkdir -p result
+	python3 Recon_Tau_2.py $^ $@
 
 # Delete partial files when the processes are killed.
 .DELETE_ON_ERROR:
