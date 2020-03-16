@@ -1,0 +1,13 @@
+.PHONY: all
+
+E:=pure
+radius:=$(shell seq -f '%+.2f' -0.60 0.01 +0.61)
+		
+src:=$(radius:%=coeff_time/$(E)/file_%.h5)
+
+all:$(src)
+
+coeff_time/$(E)/file_%.h5:
+	mkdir -p coeff_time
+	mkdir -p coeff_time/$(E)
+	python3 qt_time.py $(E) $* $@

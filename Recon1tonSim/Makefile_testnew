@@ -1,14 +1,14 @@
 .PHONY: all
 
 #sim:=$(wildcard data/*.root)
-sim:=$(wildcard ../calib/036/*.root)
+sim:=$(wildcard ../calib/1.2MeV/*.root)
 #dst:=$(sim:data/%.root=result/%.h5)
-dst:=$(sim:../calib/036/%.root=result/%.h5)
+dst:=$(sim:../calib/1.2MeV/%.root=result2/%.h5)
 all:$(dst)
 
-result/%.h5:../calib/036/%.root
-	mkdir -p result
-	python3 Recon_Tau_2.py $^ $@
+result2/%.h5:../calib/1.2MeV/%.root
+	mkdir -p result2
+	python3 Reconnew.py $^ $@
 
 # Delete partial files when the processes are killed.
 .DELETE_ON_ERROR:
