@@ -14,7 +14,7 @@ def Calib(theta, *args):
     Legend_coeff = x[ChannelID,:]
     # quantile regression
     T_i = np.dot(Legend_coeff, theta)
-    L = Likelihood_quantile(y, T_i, 0.01, 0.3)
+    L = Likelihood_quantile(y, T_i, 0.5, 0.3)
     # L = np.log(np.sum((np.transpose(np.dot(Legend_coeff, theta))-y)**2))
     # print(L)
     return L

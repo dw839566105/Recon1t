@@ -8,7 +8,7 @@ all:$(dst)
 
 result/%.h5:../calib/036/%.root
 	mkdir -p result
-	python3 Recon_Tau_2.py $^ $@
+	python3 ReconByPE_test.py $^ $@
 
 # Delete partial files when the processes are killed.
 .DELETE_ON_ERROR:
