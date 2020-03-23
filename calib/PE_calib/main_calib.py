@@ -147,16 +147,17 @@ def main_Calib(Energy, radius, fout):
         out.create_dataset('hinv', data = H_I)
 
 ## read data from calib files
-
-f = open(r'./PMT1t.txt')
-line = f.readline()
-data_list = []
-while line:
-    num = list(map(float,line.split()))
-    data_list.append(num)
+def ReadPMT(geo):
+    f = open(r'../PMT' + geo + '.txt')
     line = f.readline()
-f.close()
-PMT_pos = np.array(data_list)
+    data_list = []
+    while line:
+        num = list(map(float,line.split()))
+        data_list.append(num)
+        line = f.readline()
+    f.close()
+    PMT_pos = np.array(data_list)
 
-cut = 20 # Legend order
+cut = 5 # Legend order
+PMT_pos = ReadPMT(sys.argv[4])
 main_Calib(sys.argv[1],sys.argv[2], sys.argv[3])
