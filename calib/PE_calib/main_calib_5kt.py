@@ -5,6 +5,7 @@ import sys
 from scipy.optimize import minimize
 from numpy.polynomial import legendre as LG
 import matplotlib.pyplot as plt
+import os
 
 def Calib(theta, *args):
     total_pe, PMT_pos, cut = args
@@ -86,16 +87,26 @@ def hessian(x, *args):
 
 def main_Calib(radius, fout):
     # read file series
+    filename = '/mnt/stage/douwei/Simulation/5kt_root/1MeV_h5/5kt_' + radius + '.h5'
+
+    # read files by table
+    h1 = tables.open_file(filename,'r')
+    print(filename)
+    truthtable = h1.root.GroundTruth
+    EventID = truthtable[:]['EventID']
+    ChannelID = truthtable[:]['ChannelID']
+    h1.close()
     
     try:
         for j in np.arange(1,10,1):
-            filename = '/mnt/stage/douwei/Simulation/5kt_root/1MeV/5kt_+' + radius + '_' + str(j)+ '.h5'           
+            filename = '/mnt/stage/douwei/Simulation/5kt_root/1MeV_h5/5kt_' + radius + '_' + str(j)+ '.h5'
+            print(filename)  
             h1 = tables.open_file(filename,'r')
-            print(filename)
             truthtable = h1.root.GroundTruth
 
             EventID_tmp = truthtable[:]['EventID']
-            ChannelID_tmp = truthtable[:]['ChannelID'] - 1
+            ChannelID_tmp = truthtable[:]['ChannelID']
+            
             EventID = np.hstack((EventID, EventID_tmp))
             ChannelID = np.hstack((ChannelID, ChannelID_tmp))
 
@@ -104,15 +115,17 @@ def main_Calib(radius, fout):
         j = j - 1
     
     total_pe = np.zeros((np.size(PMT_pos[:,0]),max(EventID)))
-    for k in np.arange(1, max(EventID)):
+    for k in np.arange(1, max(EventID)+1):
         event_pe = np.zeros(np.size(PMT_pos[:,0]))
-        hit = ChannelID[EventID == k]
+        hit = ChannelID[EventID == k] - 1
         tabulate = np.bincount(hit)
         event_pe[0:np.size(tabulate)] = tabulate
         total_pe[:,k-1] = event_pe
+
     theta0 = np.zeros(cut) # initial value
-    result = minimize(Calib,theta0, method='SLSQP',jac=rosen_der, args = (total_pe, PMT_pos, cut))  
+    result = minimize(Calib,theta0, method='SLSQP', args = (total_pe, PMT_pos, cut))  
     record = np.array(result.x, dtype=float)
+    print(record)
     '''
     H = hessian(result.x, *(total_pe, PMT_pos, cut))
     H_I = np.linalg.pinv(np.matrix(H))
@@ -135,7 +148,7 @@ def main_Calib(radius, fout):
 
 ## read data from calib files
 def ReadPMT(geo):
-    f = open(r'../PMT' + geo + '.txt')
+    f = open(r'PMT_' + geo + '.txt')
     line = f.readline()
     data_list = []
     while line:
@@ -144,7 +157,10 @@ def ReadPMT(geo):
         line = f.readline()
     f.close()
     PMT_pos = np.array(data_list)
+    PMT_pos = PMT_pos[:,1:4]
+    return PMT_pos
 
+    
 cut = 5 # Legend order
-PMT_pos = ReadPMT(sys.argv[4])
-main_Calib(sys.argv[1],sys.argv[2], sys.argv[3])
+PMT_pos = ReadPMT(sys.argv[3])
+main_Calib(sys.argv[1],sys.argv[2])
