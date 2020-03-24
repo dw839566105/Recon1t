@@ -38,7 +38,7 @@ def Convert(fid, fout):
     rawdata = RawTable.row
     # Loop for event
     f = uproot.open(fid)
-    a = f['SimTriggerInfo']
+    a = f['SimpleAnalysis']
     
     for tot, chl, PEl, Pkl in zip(a.array("TotalPE"),  # total pe in an event
                 a.array("ChannelInfo.ChannelId"),       # PMT fired seq
