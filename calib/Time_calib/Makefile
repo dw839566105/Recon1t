@@ -10,4 +10,4 @@ all:$(src)
 coeff_time1/$(E)/file_%.h5:
 	mkdir -p coeff_time1
 	mkdir -p coeff_time1/$(E)
-	python3 Time_calib/qt_time.py $(E) $* $@
+	python3 Time_calib/main_calib.py $(E) $* $@
