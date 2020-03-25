@@ -18,9 +18,9 @@ def Calib(theta, *args):
     return L
 
 def Legendre_coeff(PMT_pos):
-    vertex = np.array([0,0,0,10])
-    cos_theta = np.sum(vertex[1:4]*PMT_pos,axis=1)\
-        /np.sqrt(np.sum(vertex[1:4]**2)*np.sum(PMT_pos**2,axis=1))
+    vertex = np.array([0,0,10])
+    cos_theta = np.sum(vertex*PMT_pos,axis=1)\
+        /np.sqrt(np.sum(vertex**2)*np.sum(PMT_pos**2,axis=1))
     # accurancy and nan value
     cos_theta = np.nan_to_num(cos_theta)
     cos_theta[cos_theta>1] = 1
@@ -87,7 +87,7 @@ def hessian(x, *args):
 
 def main_Calib(radius, fout):
     # read file series
-    filename = '/mnt/stage/douwei/Simulation/5kt_root/1MeV_h5/5kt_' + radius + '.h5'
+    filename = '/mnt/stage/douwei/Simulation/5kt_root/2MeV_h5/5kt_' + radius + '.h5'
 
     # read files by table
     h1 = tables.open_file(filename,'r')
@@ -123,28 +123,24 @@ def main_Calib(radius, fout):
         total_pe[:,k-1] = event_pe
 
     theta0 = np.zeros(cut) # initial value
+    theta0[0] = - 3
     result = minimize(Calib,theta0, method='SLSQP', args = (total_pe, PMT_pos, cut))  
     record = np.array(result.x, dtype=float)
     print(record)
-    '''
-    H = hessian(result.x, *(total_pe, PMT_pos, cut))
-    H_I = np.linalg.pinv(np.matrix(H))
     
     x = Legendre_coeff(PMT_pos)
     expect = np.mean(total_pe, axis=1)
     args = (total_pe, PMT_pos, cut)
     predict = [];
     predict.append(np.exp(np.dot(x, result.x)))
-    #predict.append(expect)
     predict = np.transpose(predict)
-    print(2*np.sum(- total_pe + predict + np.nan_to_num(total_pe*np.log(total_pe/predict)), axis=1)/(np.max(EventID)-30))
+    # print(2*np.sum(- total_pe + predict + np.nan_to_num(total_pe*np.log(total_pe/predict)), axis=1)/(np.max(EventID)-30))
     
     #print(np.dot(x, result.x) - expect)
-    exit()
-    # print(np.size(total_pe,1))
-    '''
     with h5py.File(fout,'w') as out:
         out.create_dataset('coeff', data = record)
+        out.create_dataset('mean', data = expect)
+        out.create_dataset('predict', data = predict)
 
 ## read data from calib files
 def ReadPMT(geo):

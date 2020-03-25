@@ -1,7 +1,7 @@
 .PHONY: all
 
 #path:=/mnt/stage/douwei/Simulation/5kt_root/1MeV_h5
-path:=coeff
+path:=coeff_pe
 radius:=$(shell seq -f '%+.2f' -12 0.2 12)
 		
 src:=$(radius:%=$(path)/5kt_%.h5)
@@ -9,5 +9,5 @@ src:=$(radius:%=$(path)/5kt_%.h5)
 all:$(src)
 
 $(path)/5kt_%.h5:
-	mkdir -p coeff
+	mkdir -p $(path)
 	python3 PE_calib/main_calib_5kt.py $* $@ 5kt

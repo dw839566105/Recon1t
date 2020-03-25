@@ -30,9 +30,9 @@ def Likelihood_quantile(y, T_i, tau, ts):
     return R
 
 def Legendre_coeff(PMT_pos):
-    vertex = np.array([0,0,10,0])
-    cos_theta = np.sum(vertex[1:4]*PMT_pos,axis=1) \
-        /np.sqrt(np.sum(vertex[1:4]**2)*np.sum(PMT_pos**2,axis=1))
+    vertex = np.array([0,0,10])
+    cos_theta = np.sum(vertex*PMT_pos,axis=1) \
+        /np.sqrt(np.sum(vertex**2)*np.sum(PMT_pos**2,axis=1))
     # accurancy and nan value
     cos_theta = np.nan_to_num(cos_theta)
     cos_theta[cos_theta>1] = 1
@@ -116,7 +116,7 @@ def main_Calib(radius, fout):
     
     try:
         for j in np.arange(1,10,1):
-            filename = '/mnt/stage/douwei/Simulation/5kt_root/1MeV_h5/5kt_' + radius + '_' + str(j)+ '.h5'
+            filename = '/mnt/stage/douwei/Simulation/5kt_root/2MeV_h5/5kt_' + radius + '_' + str(j)+ '.h5'
             print(filename)  
             h1 = tables.open_file(filename,'r')
             truthtable = h1.root.GroundTruth
@@ -146,7 +146,7 @@ def main_Calib(radius, fout):
     ChannelID = ChannelID[~(flight_time==0)]
     flight_time = flight_time[~(flight_time==0)]
     theta0 = np.zeros(cut) # initial value
-    theta0[0] = np.mean(flight_time)
+    theta0[0] = np.mean(flight_time) - 26
     result = minimize(Calib, theta0, method='SLSQP', args = (ChannelID, flight_time, PMT_pos, cut))  
     record = np.array(result.x, dtype=float)
     print(result.x)
