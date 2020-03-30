@@ -71,8 +71,7 @@ def con_sph(args):
     t0_min,\
     t0_max\
     = args
-    cons = ({'type': 'ineq', 'fun': lambda x: (x[0] - E_min)*(E_max - x[0])},\
-    {'type': 'ineq', 'fun': lambda x: shell**2 - (x[1]**2 + x[2]**2 + x[3]**2)})
+    cons = ({'type': 'ineq', 'fun': lambda x: shell**2 - (x[1]**2 + x[2]**2 + x[3]**2)})
     return cons
 
 def ReadPMT():
@@ -179,7 +178,6 @@ def recon(fid, fout, *args):
             print(event_count)
             print(pe_array)
             '''
-        event_count = event_count + 1
         recondata.append()
 
     # Flush into the output file
