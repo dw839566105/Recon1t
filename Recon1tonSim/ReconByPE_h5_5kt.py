@@ -147,7 +147,7 @@ def recon(fid, fout, *args):
         # initial value x[0] = [1,6]
         
         x0 = np.zeros((1,4))
-        x0[0][0] = pe_array.sum()/60
+        x0[0][0] = -3 + np.log(np.sum(pe_array)/300)
         x0[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)/1e3
         x0[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)/1e3
         x0[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)/1e3
@@ -162,7 +162,6 @@ def recon(fid, fout, *args):
         con_args = E_min, E_max, tau_min, tau_max, t0_min, t0_max
         cons_sph = con_sph(con_args)
         record = np.zeros((1,4))
-        
         result = minimize(Likelihood_Sph, x0, method='SLSQP',constraints=cons_sph, args = (coeff, PMT_pos, pe_array, cut))
 
         recondata['x_sph'] = result.x[1]
