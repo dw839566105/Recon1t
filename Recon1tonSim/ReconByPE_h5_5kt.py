@@ -173,7 +173,6 @@ def recon(fid, fout, *args):
         recondata['success_sph'] = result.success
 
         vertex = result.x[1:4]
-        print(vertex)
         event_count = event_count + 1
         recondata.append()
 

@@ -2,11 +2,11 @@
 
 path:=/mnt/stage/douwei/Simulation/5kt_root/2MeV_h5/
 sim:=$(wildcard $(path)*.h5)
-dst:=$(sim:$(path)%.h5=result/%.h5)
+dst:=$(sim:$(path)%.h5=result_pe/%.h5)
 all:$(dst)
 
-result/%.h5:$(path)%.h5
-	mkdir -p result
+result_pe/%.h5:$(path)%.h5
+	mkdir -p result_pe
 	python3 ReconByPE_h5_5kt.py $^ $@
 
 # Delete partial files when the processes are killed.
