@@ -173,6 +173,12 @@ def recon(fid, fout, *args):
         recondata['success_sph'] = result.success
 
         vertex = result.x[1:4]
+        print(event_count, vertex, pe_array.shape, np.mean(pe_array))
+        '''
+        if(np.isnan(vertex[1])):
+            print(event_count)
+            print(pe_array)
+            '''
         event_count = event_count + 1
         recondata.append()
 

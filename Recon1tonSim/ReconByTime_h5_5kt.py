@@ -36,8 +36,10 @@ def Likelihood_Time(vertex, *args):
     y = time
     # fixed axis
     z = np.sqrt(np.sum(vertex[1:4]**2))/12.2
+    '''
     if(z==0):
         vertex[1:4] = 0.01
+        '''
     cos_theta = np.sum(vertex[1:4]*PMT_pos,axis=1)\
         /np.sqrt(np.sum(vertex[1:4]**2)*np.sum(PMT_pos**2,axis=1))
     # accurancy and nan value
@@ -59,12 +61,11 @@ def Likelihood_Time(vertex, *args):
     for i in np.arange(cut):
         # cubic interp
         k[0,i] = np.sum(np.polynomial.legendre.legval(z,coeff[i,:]))
-    
     #k[0] = k[0] + np.log(vertex[0])
     k[0,0] = vertex[0]
     T_i = np.dot(x, np.transpose(k))
-    L = Likelihood_quantile(y, T_i[:,0], 0.05, 0.3)
-    #L = - np.nansum(TimeProfile(y, T_i[:,0]))
+    #L = Likelihood_quantile(y, T_i[:,0], 0.1, 0.3)
+    L = - np.nansum(TimeProfile(y, T_i[:,0]))
     return L
 
 def Likelihood_quantile(y, T_i, tau, ts):
