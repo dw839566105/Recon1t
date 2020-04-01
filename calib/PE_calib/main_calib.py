@@ -84,9 +84,8 @@ def hessian(x, *args):
     return H
 
 
-def main_Calib(Energy, radius, fout):
-    filename = Energy + '/calib' + radius + '.h5'
-
+def main_Calib(radius, fout):
+    filename = '/mnt/stage/douwei/Simulation/1t_root/1MeV/1t_' + radius + '.h5'
     # read files by table
     h1 = tables.open_file(filename,'r')
     print(filename)
@@ -132,13 +131,13 @@ def main_Calib(Energy, radius, fout):
     args = (total_pe, PMT_pos, cut)
     predict = [];
     predict.append(np.exp(np.dot(x, result.x)))
-    #predict.append(expect)
+    # predict.append(expect)
     predict = np.transpose(predict)
-    print(2*np.sum(- total_pe + predict + np.nan_to_num(total_pe*np.log(total_pe/predict)), axis=1)/(np.max(EventID)-30))
+    # print(2*np.sum(- total_pe + predict + np.nan_to_num(total_pe*np.log(total_pe/predict)), axis=1)/(np.max(EventID)-30))
     
     #print(np.dot(x, result.x) - expect)
-    exit()
     # print(np.size(total_pe,1))
+    print(record)
     with h5py.File(fout,'w') as out:
         out.create_dataset('coeff', data = record)
         out.create_dataset('mean', data = expect)
@@ -147,17 +146,15 @@ def main_Calib(Energy, radius, fout):
         out.create_dataset('hinv', data = H_I)
 
 ## read data from calib files
-def ReadPMT(geo):
-    f = open(r'../PMT' + geo + '.txt')
+f = open(r'./PMT_1t.txt')
+line = f.readline()
+data_list = []
+while line:
+    num = list(map(float,line.split()))
+    data_list.append(num)
     line = f.readline()
-    data_list = []
-    while line:
-        num = list(map(float,line.split()))
-        data_list.append(num)
-        line = f.readline()
-    f.close()
-    PMT_pos = np.array(data_list)
+f.close()
+PMT_pos = np.array(data_list)
 
 cut = 5 # Legend order
-PMT_pos = ReadPMT(sys.argv[4])
-main_Calib(sys.argv[1],sys.argv[2], sys.argv[3])
+main_Calib(sys.argv[1],sys.argv[2])

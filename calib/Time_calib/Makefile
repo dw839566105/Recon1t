@@ -1,13 +1,12 @@
 .PHONY: all
 
-E:=pure
+#file:=/mnt/stage/douwei/Simulation/1t_root/1MeV/
 radius:=$(shell seq -f '%+.2f' -0.60 0.01 +0.61)
-		
-src:=$(radius:%=coeff_time1/$(E)/file_%.h5)
+save:=coeff_time_1t
+src:=$(radius:%=$(save)/file_%.h5)
 
 all:$(src)
 
-coeff_time1/$(E)/file_%.h5:
-	mkdir -p coeff_time1
-	mkdir -p coeff_time1/$(E)
-	python3 Time_calib/main_calib.py $(E) $* $@
+$(save)/file_%.h5:
+	mkdir -p $(save)
+	python3 Time_calib/main_calib.py $* $@

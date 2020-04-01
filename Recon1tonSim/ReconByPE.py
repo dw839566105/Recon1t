@@ -131,7 +131,7 @@ def recon(fid, fout, *args):
     f = uproot.open(fid)
     a = f['SimTriggerInfo']
     for chl, Pkl, xt, yt, zt, Et in zip(a.array("PEList.PMTId"),
-                    a.array("PEList.HitSec"),
+                    a.array("PEList.HitPosInWindow"),
                     a.array("truthList.x"),
                     a.array("truthList.y"),
                     a.array("truthList.z"),

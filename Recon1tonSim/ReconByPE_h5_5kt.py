@@ -171,7 +171,7 @@ def recon(fid, fout, *args):
         recondata['success_sph'] = result.success
 
         vertex = result.x[1:4]
-        print(event_count, vertex, pe_array.shape, np.mean(pe_array))
+        #print(event_count, vertex, pe_array.shape, np.mean(pe_array))
         '''
         if(np.isnan(vertex[1])):
             print(event_count)
@@ -189,7 +189,6 @@ if len(sys.argv)!=3:
     print("Wront arguments!")
     print("Usage: python Recon.py MCFileName[.h5] outputFileName[.h5]")
     sys.exit(1)
-
 
 # Read PMT position
 PMT_pos = ReadPMT()

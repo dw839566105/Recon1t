@@ -157,6 +157,6 @@ def ReadPMT(geo):
     return PMT_pos
 
     
-cut = 5 # Legend order
+cut = 51 # Legend order
 PMT_pos = ReadPMT(sys.argv[3])
 main_Calib(sys.argv[1],sys.argv[2])

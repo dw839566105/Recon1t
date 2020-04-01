@@ -98,8 +98,8 @@ def hessian(x, *args):
     return H
 
 
-def main_Calib(Energy, radius, fout):
-    filename = Energy + '/calib' + radius + '.h5'
+def main_Calib(radius, fout):
+    filename = '/mnt/stage/douwei/Simulation/1t_root/1MeV/1t_' + radius + '.h5'
 
     # read files by table
     h1 = tables.open_file(filename,'r')
@@ -152,7 +152,7 @@ def main_Calib(Energy, radius, fout):
     with h5py.File(fout,'w') as out:
         out.create_dataset('coeff', data = record)
 
-f = open(r'./PMT1t.txt')
+f = open(r'./PMT_1t.txt')
 line = f.readline()
 data_list = []
 while line:
@@ -163,4 +163,4 @@ f.close()
 PMT_pos = np.array(data_list)
 
 cut = 5 # Legend order
-main_Calib(sys.argv[1],sys.argv[2], sys.argv[3])
+main_Calib(sys.argv[1],sys.argv[2])
