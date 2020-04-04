@@ -17,9 +17,9 @@ def Calib(theta, *args):
     return L
 
 def Legendre_coeff(PMT_pos):
-    vertex = np.array([0,2,10,0])
-    cos_theta = np.sum(vertex[1:4]*PMT_pos,axis=1)\
-        /np.sqrt(np.sum(vertex[1:4]**2)*np.sum(PMT_pos**2,axis=1))
+    vertex = np.array([0,2,10])
+    cos_theta = np.sum(vertex*PMT_pos,axis=1)\
+        /np.sqrt(np.sum(vertex**2)*np.sum(PMT_pos**2,axis=1))
     # accurancy and nan value
     cos_theta = np.nan_to_num(cos_theta)
     cos_theta[cos_theta>1] = 1
@@ -85,7 +85,7 @@ def hessian(x, *args):
 
 
 def main_Calib(radius, fout):
-    filename = '/mnt/stage/douwei/Simulation/1t_root/1MeV/1t_' + radius + '.h5'
+    filename = '/mnt/stage/douwei/Simulation/1t_root/1MeV_1_h5/1t_' + radius + '.h5'
     # read files by table
     h1 = tables.open_file(filename,'r')
     print(filename)
@@ -120,7 +120,7 @@ def main_Calib(radius, fout):
         event_pe[0:np.size(tabulate)] = tabulate
         total_pe[:,k-1] = event_pe
     theta0 = np.zeros(cut) # initial value
-    result = minimize(Calib,theta0, method='SLSQP',jac=rosen_der, args = (total_pe, PMT_pos, cut))  
+    result = minimize(Calib,theta0, method='SLSQP', args = (total_pe, PMT_pos, cut))  
     record = np.array(result.x, dtype=float)
     
     H = hessian(result.x, *(total_pe, PMT_pos, cut))

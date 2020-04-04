@@ -1,7 +1,7 @@
 .PHONY: all
 
 #path:=/mnt/stage/douwei/Simulation/5kt_root/1MeV_h5
-path:=coeff_pe_51
+path:=coeff_pe_21
 radius:=$(shell seq -f '%+.2f' -12 0.2 12)
 		
 src:=$(radius:%=$(path)/5kt_%.h5)
