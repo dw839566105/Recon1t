@@ -17,7 +17,7 @@ def Calib(theta, *args):
     Legend_coeff = x[ChannelID,:]
     # quantile regression
     T_i = np.dot(Legend_coeff, theta)
-    L = Likelihood_quantile(y, T_i, 0.005, 0.3)
+    L = Likelihood_quantile(y, T_i, 0.01, 0.3)
     # L = np.log(np.sum((np.transpose(np.dot(Legend_coeff, theta))-y)**2))
     # print(L)
     return L
@@ -30,8 +30,14 @@ def Likelihood_quantile(y, T_i, tau, ts):
     #log_Likelihood = exp
     return R
 
+def quantile_check(y, T_i, tau, ts):
+    less = T_i - y[y<T_i]
+    more = y[y>=T_i] - T_i
+    R = (1-tau)*np.sum(less) + tau*np.sum(more)
+    return R
+
 def Legendre_coeff(PMT_pos):
-    vertex = np.array([0,2,10,0])
+    vertex = np.array([0,0,2,10])
     cos_theta = np.sum(vertex[1:4]*PMT_pos,axis=1) \
         /np.sqrt(np.sum(vertex[1:4]**2)*np.sum(PMT_pos**2,axis=1))
     # accurancy and nan value
@@ -99,7 +105,8 @@ def hessian(x, *args):
 
 
 def main_Calib(radius, fout):
-    filename = '/mnt/stage/douwei/Simulation/1t_root/1MeV/1t_' + radius + '.h5'
+    filename = '/mnt/stage/douwei/Simulation/1t_root/1MeV_10000_h5/1t_' + radius + '.h5'
+    #filename = '/mnt/stage/douwei/Simulation/1t_root//1t_' + radius + '.h5'
 
     # read files by table
     h1 = tables.open_file(filename,'r')
@@ -143,14 +150,22 @@ def main_Calib(radius, fout):
     total_pe = np.zeros((np.size(PMT_pos[:,0]),max(EventID)))
     
     flight_time = PulseTime - dETime
-
-    theta0 = np.ones(cut) # initial value
+    ChannelID = ChannelID[~(flight_time==0)]
+    flight_time = flight_time[~(flight_time==0)]
+    theta0 = np.zeros(cut) # initial value
+    theta0[0] = np.mean(flight_time) - 26
     result = minimize(Calib,theta0, method='SLSQP',args = (ChannelID, flight_time, PMT_pos, cut))  
     record = np.array(result.x, dtype=float)
     print(result.x)
     
+    x = Legendre_coeff(PMT_pos)
+    predict = [];
+    predict.append(np.dot(x, result.x))
     with h5py.File(fout,'w') as out:
         out.create_dataset('coeff', data = record)
+        out.create_dataset('ft', data = flight_time)
+        out.create_dataset('ch', data = ChannelID)
+        out.create_dataset('predict', data = predict)
 
 f = open(r'./PMT_1t.txt')
 line = f.readline()

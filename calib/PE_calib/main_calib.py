@@ -13,7 +13,7 @@ def Calib(theta, *args):
     x = Legendre_coeff(PMT_pos)
     # Poisson regression
     L = - np.sum(np.sum(np.transpose(y)*np.transpose(np.dot(x, theta)) \
-        - np.transpose(np.exp(np.dot(x, theta)))))
+        - np.transpose(np.exp(np.dot(x, theta))))) + np.exp(np.sum(np.abs(theta)))
     return L
 
 def Legendre_coeff(PMT_pos):
@@ -85,7 +85,7 @@ def hessian(x, *args):
 
 
 def main_Calib(radius, fout):
-    filename = '/mnt/stage/douwei/Simulation/1t_root/1MeV_1_h5/1t_' + radius + '.h5'
+    filename = '/mnt/stage/douwei/Simulation/1t_root/1MeV_20000_h5/1t_' + radius + '.h5'
     # read files by table
     h1 = tables.open_file(filename,'r')
     print(filename)
@@ -156,5 +156,5 @@ while line:
 f.close()
 PMT_pos = np.array(data_list)
 
-cut = 5 # Legend order
+cut = 6 # Legend order
 main_Calib(sys.argv[1],sys.argv[2])

@@ -14,7 +14,7 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-h = tables.open_file('../calib/Time_coeff.h5','r')
+h = tables.open_file('../calib/Time_coeff_1t.h5','r')
 coeff = h.root.coeff[:]
 h.close()
 cut, fitcut = coeff.shape
@@ -35,9 +35,11 @@ def Likelihood_Time(vertex, *args):
     coeff, PMT_pos, fired, time, cut = args
     y = time
     # fixed axis
-    z = np.sqrt(np.sum(vertex[1:4]**2))
+    z = np.sqrt(np.sum(vertex[1:4]**2))/0.65
     cos_theta = np.sum(vertex[1:4]*PMT_pos,axis=1)\
         /np.sqrt(np.sum(vertex[1:4]**2)*np.sum(PMT_pos**2,axis=1))
+    if(np.abs(z)>1):
+        z = np.sign(z)
     # accurancy and nan value
     cos_theta = np.nan_to_num(cos_theta)
     cos_theta[cos_theta>1] = 1
@@ -56,14 +58,16 @@ def Likelihood_Time(vertex, *args):
     k = np.zeros((1,cut))
     for i in np.arange(cut):
         # cubic interp
-        if(np.abs(z)>0.65):
-            z = 0.65*np.sign(z)
         k[0,i] = np.sum(np.polynomial.legendre.legval(z,coeff[i,:]))
-    
+    '''
+    k[0,1] = k[0,1]/14.4*0.8/3
+    k[0,2::] = k[0,2::]/14.4*0.8*3
+   '''
     #k[0] = k[0] + np.log(vertex[0])
     k[0,0] = vertex[0]
     T_i = np.dot(x, np.transpose(k))
-    L = Likelihood_quantile(y, T_i[:,0], 0.2, 0.3)
+    L = Likelihood_quantile(y, T_i[:,0], 0.05, 0.3)
+    #L = - np.nansum(TimeProfile(y, T_i[:,0]))
     return L
 
 def Likelihood_quantile(y, T_i, tau, ts):
@@ -73,6 +77,22 @@ def Likelihood_quantile(y, T_i, tau, ts):
     R = (1-tau)*np.sum(less) + tau*np.sum(more)
     #log_Likelihood = exp
     return R
+
+def TimeProfile(y,T_i):
+    time_correct = y - T_i
+    time_correct[time_correct<=-8] = -8
+    p_time = TimeUncertainty(time_correct, 26)
+    return p_time
+
+def TimeUncertainty(tc, tau_d):
+    TTS = 2.2
+    tau_r = 1.6
+    a1 = np.exp(((TTS**2 - tc*tau_d)**2-tc**2*tau_d**2)/(2*TTS**2*tau_d**2))
+    a2 = np.exp(((TTS**2*(tau_d+tau_r) - tc*tau_d*tau_r)**2 - tc**2*tau_d**2*tau_r**2)/(2*TTS**2*tau_d**2*tau_r**2))
+    a3 = np.exp(((TTS**2 - tc*tau_d)**2 - tc**2*tau_d**2)/(2*TTS**2*tau_d**2))*special.erf((tc*tau_d-TTS**2)/(np.sqrt(2)*tau_d*TTS))
+    a4 = np.exp(((TTS**2*(tau_d+tau_r) - tc*tau_d*tau_r)**2 - tc**2*tau_d**2*tau_r**2)/(2*TTS**2*tau_d**2*tau_r**2))*special.erf((tc*tau_d*tau_r-TTS**2*(tau_d+tau_r))/(np.sqrt(2)*tau_d*tau_r*TTS))
+    p_time  = np.log(tau_d + tau_r) - 2*np.log(tau_d) + np.log(a1-a2+a3-a4)
+    return p_time
 
 def con_sph(args):
     E_min,\
@@ -86,7 +106,7 @@ def con_sph(args):
     return cons
 
 def ReadPMT():
-    f = open(r"./PMT1t.txt")
+    f = open(r"./PMT_1t.txt")
     line = f.readline()
     data_list = [] 
     while line:
@@ -157,7 +177,7 @@ def recon(fid, fout, *args):
         # initial value x[0] = [1,6]
         
         x0 = np.zeros((1,4))
-        x0[0][0] = pe_array.sum()/60
+        x0[0][0] = np.mean(time_array)
         x0[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)
         x0[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)
         x0[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)
@@ -168,17 +188,11 @@ def recon(fid, fout, *args):
         tau_max = 100
         t0_min = -300
         t0_max = 300
-       
-        # initial value
-        x0 = np.zeros((1,4))
-        x0[0][0] = pe_array.sum()/60
-        x0[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)
-        x0[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)
-        x0[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)
 
         if(np.sqrt(np.sum(x0**2))>0.65):
             x0 = x0/np.sqrt(np.sum(x0**2))*0.65
         con_args = E_min, E_max, tau_min, tau_max, t0_min, t0_max
+        
         cons_sph = con_sph(con_args)
         record = np.zeros((1,4))
         
@@ -191,7 +205,6 @@ def recon(fid, fout, *args):
         recondata['success_sph'] = result.success
 
         vertex = result.x[1:4]
-        print(vertex, np.sqrt(np.sum(vertex**2)))
         event_count = event_count + 1
         recondata.append()
 

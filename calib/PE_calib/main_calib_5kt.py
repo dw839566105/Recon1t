@@ -14,7 +14,7 @@ def Calib(theta, *args):
     x = Legendre_coeff(PMT_pos)
     # Poisson regression
     L = - np.sum(np.sum(np.transpose(y)*np.transpose(np.dot(x, theta)) \
-        - np.transpose(np.exp(np.dot(x, theta)))))
+        - np.transpose(np.exp(np.dot(x, theta))))) * np.exp(0.01*np.sum(np.abs(theta)))
     return L
 
 def Legendre_coeff(PMT_pos):
@@ -157,6 +157,6 @@ def ReadPMT(geo):
     return PMT_pos
 
     
-cut = 21 # Legend order
+cut = 10 # Legend order
 PMT_pos = ReadPMT(sys.argv[3])
 main_Calib(sys.argv[1],sys.argv[2])

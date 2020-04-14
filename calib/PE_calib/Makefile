@@ -1,7 +1,7 @@
 .PHONY: all
 
 radius:=$(shell seq -f '%+.2f' +0.60 -0.01 -0.60)
-save:=coeff_pe_1t
+save:=coeff_pe_1t_sparse_exp_5
 src:=$(radius:%=$(save)/file_%.h5)
 
 all:$(src)

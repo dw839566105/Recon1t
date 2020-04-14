@@ -1,14 +1,14 @@
 .PHONY: all
 
-path:=/mnt/stage/douwei/Simulation/5kt_root/2MeV_h5/
-save:=result_time
+path:=/mnt/stage/douwei/Simulation/1t_root/1MeV_1_h5/
+save:=result_time_qt
 sim:=$(wildcard $(path)*.h5)
 dst:=$(sim:$(path)%.h5=$(save)/%.h5)
 all:$(dst)
 
 $(save)/%.h5:$(path)%.h5
-	mkdir -p result_time
-	python3 ReconByTime_h5_5kt.py $^ $@
+	mkdir -p $(save)
+	python3 ReconByTime_h5.py $^ $@
 
 # Delete partial files when the processes are killed.
 .DELETE_ON_ERROR:

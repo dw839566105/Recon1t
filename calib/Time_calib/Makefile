@@ -1,8 +1,8 @@
 .PHONY: all
 
 #file:=/mnt/stage/douwei/Simulation/1t_root/1MeV/
-radius:=$(shell seq -f '%+.2f' -0.60 0.01 +0.61)
-save:=coeff_time_1t
+radius:=$(shell seq -f '%+.2f' +0.60 -0.01 -0.61)
+save:=coeff_time_1t_10000_5
 src:=$(radius:%=$(save)/file_%.h5)
 
 all:$(src)
