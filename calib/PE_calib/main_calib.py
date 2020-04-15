@@ -85,7 +85,7 @@ def hessian(x, *args):
 
 
 def main_Calib(radius, fout):
-    filename = '/mnt/stage/douwei/Simulation/1t_root/1MeV_20000_h5/1t_' + radius + '.h5'
+    filename = '/mnt/stage/douwei/Simulation/1t_root/1.5MeV_015/1t_' + radius + '.h5'
     # read files by table
     h1 = tables.open_file(filename,'r')
     print(filename)

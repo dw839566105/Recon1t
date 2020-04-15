@@ -41,13 +41,15 @@ def Likelihood(vertex, *args):
     L1 = Likelihood_PE(vertex, *(coeff_pe, PMT_pos, pe_array, cut_pe))
     L2 = Likelihood_Time(vertex, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time))
     L = L1 + L2
-    return L1
+    return L
                          
 def Likelihood_PE(vertex, *args):
     coeff, PMT_pos, event_pe, cut = args
     y = event_pe
     # fixed axis
     z = np.sqrt(np.sum(vertex[1:4]**2))/shell
+    if(np.abs(z)>1):
+        z = np.sign(z)
     cos_theta = np.sum(vertex[1:4]*PMT_pos,axis=1)\
         /np.sqrt(np.sum(vertex[1:4]**2)*np.sum(PMT_pos**2,axis=1))
     # accurancy and nan value
@@ -79,6 +81,8 @@ def Likelihood_Time(vertex, *args):
     y = time
     # fixed axis
     z = np.sqrt(np.sum(vertex[1:4]**2))/shell
+    if(np.abs(z)>1):
+        z = np.sign(z)
     cos_theta = np.sum(vertex[1:4]*PMT_pos,axis=1)\
         /np.sqrt(np.sum(vertex[1:4]**2)*np.sum(PMT_pos**2,axis=1))
     # accurancy and nan value
@@ -116,7 +120,7 @@ def Likelihood_quantile(y, T_i, tau, ts):
 
 def TimeProfile(y,T_i):
     time_correct = y - T_i
-    time_correct[time_correct<=-8] = -8
+    time_correct[time_correct<=-4] = -4
     p_time = TimeUncertainty(time_correct, 26)
     
     return p_time
@@ -223,11 +227,10 @@ def recon(fid, fout, *args):
         tau_max = 100
         t0_min = -300
         t0_max = 300
-       
         # initial value
         x0 = np.zeros((1,5))
-        x0[0][0] = -3 + np.log(np.sum(pe_array)/300)
-        x0[0][4] = np.mean(time_array)
+        x0[0][0] = 0.8 + np.log(np.sum(pe_array)/60)
+        x0[0][4] = np.mean(time_array) - 26
         x0[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)
         x0[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)
         x0[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)
@@ -245,7 +248,6 @@ def recon(fid, fout, *args):
 
         vertex = result.x[1:4]
         print(result.x, np.sqrt(np.sum(vertex**2)))
-        event_count = event_count + 1
         recondata.append()
 
     # Flush into the output file
