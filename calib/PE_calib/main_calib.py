@@ -10,13 +10,13 @@ def Calib(theta, *args):
     total_pe, PMT_pos, cut = args
     y = total_pe
     # fixed axis
-    x = Legendre_coeff(PMT_pos)
+    x = Legendre_coeff(PMT_pos, cut)
     # Poisson regression
     L = - np.sum(np.sum(np.transpose(y)*np.transpose(np.dot(x, theta)) \
         - np.transpose(np.exp(np.dot(x, theta))))) + np.exp(np.sum(np.abs(theta)))
     return L
 
-def Legendre_coeff(PMT_pos):
+def Legendre_coeff(PMT_pos, cut):
     vertex = np.array([0,2,10])
     cos_theta = np.sum(vertex*PMT_pos,axis=1)\
         /np.sqrt(np.sum(vertex**2)*np.sum(PMT_pos**2,axis=1))
@@ -84,8 +84,10 @@ def hessian(x, *args):
     return H
 
 
-def main_Calib(radius, fout):
-    filename = '/mnt/stage/douwei/Simulation/1t_root/1.5MeV_015/1t_' + radius + '.h5'
+def main_Calib(radius, path, fout):
+    
+    #filename = '/mnt/stage/douwei/Simulation/1t_root/1.5MeV_015/1t_' + radius + '.h5'
+    filename = path + '1t_' + radius + '.h5'
     # read files by table
     h1 = tables.open_file(filename,'r')
     print(filename)
@@ -97,7 +99,7 @@ def main_Calib(radius, fout):
     # read file series
     
     try:
-        for j in np.arange(1,10,1):
+        for j in np.arange(1,20,1):
             filename = Energy + '/calib' + radius + '_' + str(j)+ '.h5'           
             h1 = tables.open_file(filename,'r')
             print(filename)
@@ -119,31 +121,34 @@ def main_Calib(radius, fout):
         tabulate = np.bincount(hit)
         event_pe[0:np.size(tabulate)] = tabulate
         total_pe[:,k-1] = event_pe
-    theta0 = np.zeros(cut) # initial value
-    result = minimize(Calib,theta0, method='SLSQP', args = (total_pe, PMT_pos, cut))  
-    record = np.array(result.x, dtype=float)
-    
-    H = hessian(result.x, *(total_pe, PMT_pos, cut))
-    H_I = np.linalg.pinv(np.matrix(H))
-    
-    x = Legendre_coeff(PMT_pos)
-    expect = np.mean(total_pe, axis=1)
-    args = (total_pe, PMT_pos, cut)
-    predict = [];
-    predict.append(np.exp(np.dot(x, result.x)))
-    # predict.append(expect)
-    predict = np.transpose(predict)
-    # print(2*np.sum(- total_pe + predict + np.nan_to_num(total_pe*np.log(total_pe/predict)), axis=1)/(np.max(EventID)-30))
-    
-    #print(np.dot(x, result.x) - expect)
-    # print(np.size(total_pe,1))
-    print(record)
-    with h5py.File(fout,'w') as out:
-        out.create_dataset('coeff', data = record)
-        out.create_dataset('mean', data = expect)
-        out.create_dataset('expect', data = predict)
-        out.create_dataset('rate', data = np.size(total_pe,1))
-        out.create_dataset('hinv', data = H_I)
+    with h5py.File(fout,'w') as out:        
+        for cut in np.arange(5,50,5):
+            theta0 = np.zeros(cut) # initial value
+            result = minimize(Calib,theta0, method='SLSQP', args = (total_pe, PMT_pos, cut))  
+            record = np.array(result.x, dtype=float)
+
+            H = hessian(result.x, *(total_pe, PMT_pos, cut))
+            H_I = np.linalg.pinv(np.matrix(H))
+
+            x = Legendre_coeff(PMT_pos, cut)
+            mean = np.mean(total_pe, axis=1)
+            args = (total_pe, PMT_pos, cut)
+            predict = [];
+            predict.append(np.exp(np.dot(x, result.x)))
+            # predict.append(mean)
+            predict = np.transpose(predict)
+            chi2sq = 2*np.sum(- total_pe + predict + np.nan_to_num(total_pe*np.log(total_pe/predict)), axis=1)/(np.max(EventID)-30)
+
+            #print(np.dot(x, result.x) - mean)
+            # print(np.size(total_pe,1))
+            print(record)
+
+            out.create_dataset('coeff' + str(cut), data = record)
+            out.create_dataset('mean' + str(cut), data = mean)
+            out.create_dataset('predict' + str(cut), data = predict)
+            out.create_dataset('rate' + str(cut), data = np.size(total_pe,1))
+            out.create_dataset('hinv' + str(cut), data = H_I)
+            out.create_dataset('chi' + str(cut), data = chi2sq)
 
 ## read data from calib files
 f = open(r'./PMT_1t.txt')
@@ -156,5 +161,5 @@ while line:
 f.close()
 PMT_pos = np.array(data_list)
 
-cut = 6 # Legend order
-main_Calib(sys.argv[1],sys.argv[2])
+#cut = 6 # Legend order
+main_Calib(sys.argv[1],sys.argv[2], sys.argv[3])
