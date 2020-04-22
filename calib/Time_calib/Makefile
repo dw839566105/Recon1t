@@ -9,4 +9,4 @@ all:$(src)
 
 $(save)/file_%.h5:
 	mkdir -p $(save)
-	python3 Time_calib/main_calib.py $* $@
+	python3 Time_calib/main_calib.py $* /mnt/stage/douwei/Simulation/1t_root/2MeV_015/ $@

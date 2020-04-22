@@ -122,7 +122,7 @@ def main_Calib(radius, path, fout):
         event_pe[0:np.size(tabulate)] = tabulate
         total_pe[:,k-1] = event_pe
     with h5py.File(fout,'w') as out:        
-        for cut in np.arange(5,50,5):
+        for cut in np.arange(5,35,5):
             theta0 = np.zeros(cut) # initial value
             result = minimize(Calib,theta0, method='SLSQP', args = (total_pe, PMT_pos, cut))  
             record = np.array(result.x, dtype=float)
@@ -139,7 +139,7 @@ def main_Calib(radius, path, fout):
             predict = np.transpose(predict)
             chi2sq = 2*np.sum(- total_pe + predict + np.nan_to_num(total_pe*np.log(total_pe/predict)), axis=1)/(np.max(EventID)-30)
 
-            #print(np.dot(x, result.x) - mean)
+            # print(np.dot(x, result.x) - mean)
             # print(np.size(total_pe,1))
             print(record)
 

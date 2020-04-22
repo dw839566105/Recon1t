@@ -13,7 +13,7 @@ def Calib(theta, *args):
     ChannelID, flight_time, PMT_pos, cut = args
     y = flight_time
     # fixed axis
-    x = Legendre_coeff(PMT_pos)
+    x = Legendre_coeff(PMT_pos, cut)
     Legend_coeff = x[ChannelID,:]
     # quantile regression
     T_i = np.dot(Legend_coeff, theta)
@@ -36,7 +36,7 @@ def quantile_check(y, T_i, tau, ts):
     R = (1-tau)*np.sum(less) + tau*np.sum(more)
     return R
 
-def Legendre_coeff(PMT_pos):
+def Legendre_coeff(PMT_pos, cut):
     vertex = np.array([0,0,2,10])
     cos_theta = np.sum(vertex[1:4]*PMT_pos,axis=1) \
         /np.sqrt(np.sum(vertex[1:4]**2)*np.sum(PMT_pos**2,axis=1))
@@ -47,7 +47,7 @@ def Legendre_coeff(PMT_pos):
     size = np.size(PMT_pos[:,0])
     x = np.zeros((size, cut))
     # legendre coeff
-    for i in np.arange(0,cut):
+    for i in np.arange(0, cut):
         c = np.zeros(cut)
         c[i] = 1
         x[:,i] = LG.legval(cos_theta,c)
@@ -104,10 +104,9 @@ def hessian(x, *args):
     return H
 
 
-def main_Calib(radius, fout):
-    filename = '/mnt/stage/douwei/Simulation/1t_root/1.5MeV_015/1t_' + radius + '.h5'
-    #filename = '/mnt/stage/douwei/Simulation/1t_root//1t_' + radius + '.h5'
-
+def main_Calib(radius, path, fout):
+    #filename = '/mnt/stage/douwei/Simulation/1t_root/1.5MeV_015/1t_' + radius + '.h5'
+    filename = path + '1t_' + radius + '.h5'
     # read files by table
     h1 = tables.open_file(filename,'r')
     print(filename)
@@ -152,20 +151,24 @@ def main_Calib(radius, fout):
     flight_time = PulseTime - dETime
     ChannelID = ChannelID[~(flight_time==0)]
     flight_time = flight_time[~(flight_time==0)]
-    theta0 = np.zeros(cut) # initial value
-    theta0[0] = np.mean(flight_time) - 26
-    result = minimize(Calib,theta0, method='SLSQP',args = (ChannelID, flight_time, PMT_pos, cut))  
-    record = np.array(result.x, dtype=float)
-    print(result.x)
+
     
-    x = Legendre_coeff(PMT_pos)
-    predict = [];
-    predict.append(np.dot(x, result.x))
     with h5py.File(fout,'w') as out:
-        out.create_dataset('coeff', data = record)
-        out.create_dataset('ft', data = flight_time)
-        out.create_dataset('ch', data = ChannelID)
-        out.create_dataset('predict', data = predict)
+        for cut in np.arange(5,35,5):
+            theta0 = np.zeros(cut) # initial value
+            theta0[0] = np.mean(flight_time) - 26
+            result = minimize(Calib,theta0, method='SLSQP',args = (ChannelID, flight_time, PMT_pos, cut))  
+            record = np.array(result.x, dtype=float)
+            print(result.x)
+
+            x = Legendre_coeff(PMT_pos, cut)
+            predict = [];
+            predict.append(np.dot(x, result.x))
+
+            out.create_dataset('coeff' + str(cut), data = record)
+            out.create_dataset('ft' + str(cut), data = flight_time)
+            out.create_dataset('ch' + str(cut), data = ChannelID)
+            out.create_dataset('predict' + str(cut), data = predict)
 
 f = open(r'./PMT_1t.txt')
 line = f.readline()
@@ -177,5 +180,4 @@ while line:
 f.close()
 PMT_pos = np.array(data_list)
 
-cut = 5 # Legend order
-main_Calib(sys.argv[1],sys.argv[2])
+main_Calib(sys.argv[1],sys.argv[2], sys.argv[3])
