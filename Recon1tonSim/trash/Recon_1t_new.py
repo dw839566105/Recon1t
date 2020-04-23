@@ -45,7 +45,7 @@ def Likelihood(vertex, *args):
     L1 = Likelihood_PE(vertex, *(coeff_pe, PMT_pos, pe_array, cut_pe))
     L2 = Likelihood_Time(vertex, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time))
     L = L1 + L2
-    return L1
+    return L
                          
 def Likelihood_PE(vertex, *args):
     coeff, PMT_pos, event_pe, cut = args
