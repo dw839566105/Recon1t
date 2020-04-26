@@ -13,7 +13,8 @@ def Calib(theta, *args):
     x = Legendre_coeff(PMT_pos, cut)
     # Poisson regression
     L = - np.sum(np.sum(np.transpose(y)*np.transpose(np.dot(x, theta)) \
-        - np.transpose(np.exp(np.dot(x, theta))))) + np.exp(np.sum(np.abs(theta)))
+        - np.transpose(np.exp(np.dot(x, theta))))) + np.exp(np.sum(np.abs(theta))) \
+        + np.sum(np.abs(theta)) # L1 
     return L
 
 def Legendre_coeff(PMT_pos, cut):

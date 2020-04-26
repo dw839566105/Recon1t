@@ -1,0 +1,16 @@
+.PHONY: all
+
+#sim:=$(wildcard data/*.root)
+sim:=$(wildcard ../calib/1.2MeV/*.root)
+#dst:=$(sim:data/%.root=result/%.h5)
+dst:=$(sim:../calib/1.2MeV/%.root=result2/%.h5)
+all:$(dst)
+
+result2/%.h5:../calib/1.2MeV/%.root
+	mkdir -p result2
+	python3 Reconnew.py $^ $@
+
+# Delete partial files when the processes are killed.
+.DELETE_ON_ERROR:
+# Keep intermediate files around
+.SECONDARY:

@@ -105,8 +105,8 @@ def main(path, upperlimit, lowerlimit, order_max):
             out.create_dataset('ft', data = ft)
             out.create_dataset('ch', data = ch)
             out.create_dataset('predict', data = predict)
-            out.create_dataset('in', data = k1)
-            out.create_dataset('out', data = k2)
+            out.create_dataset('poly_in', data = k1)
+            out.create_dataset('poly_out', data = k2)
     
 path = sys.argv[1]
 upperlimit = eval(sys.argv[2])

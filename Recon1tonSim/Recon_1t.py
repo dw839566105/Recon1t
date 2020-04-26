@@ -12,6 +12,7 @@ from scipy.optimize import minimize
 from scipy import interpolate
 from numpy.polynomial import legendre as LG
 from scipy import special
+from scipy.linalg import norm
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -46,7 +47,27 @@ def load_coeff(order):
     cut_time, fitcut_time = coeff_time_in.shape
     return coeff_pe_in, coeff_pe_out, coeff_time_in, coeff_time_out, cut_pe, fitcut_pe, cut_time, fitcut_time
 
+def r2c(c):
+    v = np.zeros(3)
+    v[2] = c[0] * np.cos(c[1]) #z
+    rho = c[0] * np.sin(c[1])
+    v[0] = rho * np.cos(c[2]) #x
+    v[1] = rho * np.sin(c[2]) #y
+    return v
+
+def c2r(c):
+    v = np.zeros(3)
+    v[0] = norm(c)
+    v[1] = np.arccos(c[2]/(v[0]+1e-6))
+    v[2] = np.arctan(c[1]/(c[0]+1e-6)) + (c[0]<0)*np.pi/2
+    return v
+
 def Likelihood(vertex, *args):
+    '''
+    vertex[1]: r
+    vertex[2]: theta
+    vertex[3]: phi
+    '''
     coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, str_s = args 
     L1 = Likelihood_PE(vertex, *(coeff_pe, PMT_pos, pe_array, cut_pe, str_s))
     L2 = Likelihood_Time(vertex, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time, str_s))
@@ -56,24 +77,18 @@ def Likelihood(vertex, *args):
 def Likelihood_PE(vertex, *args):
     coeff, PMT_pos, event_pe, cut, str_s = args
     y = event_pe
-    # fixed axis
-    z = np.sqrt(np.sum(vertex[1:4]**2))
-    if(np.abs(z) > 1):
-        z = np.sign(z)
+    
+    z = abs(vertex[1])    
+    if z > shell:
+        return np.inf
+    
+    if z<0.001:
+        # assume (0,0,1)
+        cos_theta = PMT_pos[:,2] / norm(PMT_pos,axis=1)
+    else:
+        v = r2c(vertex[1:4])
+        cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
         
-    if (str_s == 'in'):
-        if(np.abs(z) > shell_in):
-            z = np.sign(z) * shell_in
-    elif (str_s == 'out'):
-        if(np.abs(z) < shell_out):
-            z = np.sign(z) * shell_out
-            
-    cos_theta = np.sum(vertex[1:4]*PMT_pos,axis=1)\
-        /np.sqrt(np.sum(vertex[1:4]**2)*np.sum(PMT_pos**2,axis=1))
-    # accurancy and nan value
-    cos_theta = np.nan_to_num(cos_theta)
-    cos_theta[cos_theta>1] = 1
-    cos_theta[cos_theta<-1] =-1
     size = np.size(PMT_pos[:,0])
     x = np.zeros((size, cut))
     # legendre theta of PMTs
@@ -295,15 +310,20 @@ def recon(fid, fout, *args):
         x0_in = np.zeros((1,5))
         x0_in[0][0] = 0.8 + np.log(np.sum(pe_array)/60)
         x0_in[0][4] = np.mean(time_array) - 26
+        xyz = np.sum(pe_array*PMT_pos)/np.sum(pe_array)/shell
+        a = c2r(xyz)
+        print(a)
+        exit()
         x0_in[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)/shell
         x0_in[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)/shell
         x0_in[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)/shell
+        
         
         # not added yet
         con_args = E_min, E_max, tau_min, tau_max, t0_min, t0_max
         cons_sph_in = con_sph_in(con_args)
         
-        result_in = minimize(Likelihood, x0_in, method='SLSQP',constraints = cons_sph_in, args = (coeff_time_in, coeff_pe_in, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, 'in'))
+        result_in = minimize(Likelihood, x0_in, method='SLSQP',bounds=((E_min, E_max), (0, shell_in), (None, None), (None, None),(None, None)), args = (coeff_time_in, coeff_pe_in, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, 'in'))
 
         recondata['x_sph_in'] = result_in.x[1] * shell
         recondata['y_sph_in'] = result_in.x[2] * shell
@@ -320,7 +340,7 @@ def recon(fid, fout, *args):
         con_args = E_min, E_max, tau_min, tau_max, t0_min, t0_max
         cons_sph_out = con_sph_out(con_args)
         
-        result_out = minimize(Likelihood, x0_out, method='SLSQP',constraints = cons_sph_out, args = (coeff_time_out, coeff_pe_out, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, 'out'))
+        result_out = minimize(Likelihood, x0_out, method='SLSQP',bounds=((E_min, E_max), (shell_out,1), (None, None), (None, None),(None, None)), args = (coeff_time_out, coeff_pe_out, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, 'out'))
 
         recondata['x_sph_out'] = result_out.x[1] * shell
         recondata['y_sph_out'] = result_out.x[2] * shell

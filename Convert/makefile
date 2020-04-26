@@ -1,4 +1,4 @@
-srcL:=$(wildcard /mnt/stage/douwei/Simulation/5kt_root/1MeV/*.root)
+srcL:=$(wildcard /mnt/stage/douwei/Simulation/1t_root/2.0MeV_cpt/*.root)
 dstL:=$(srcL:%.root=%.h5)
 
 .PHONY: all
