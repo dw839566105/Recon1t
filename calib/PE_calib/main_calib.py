@@ -7,25 +7,31 @@ from numpy.polynomial import legendre as LG
 import matplotlib.pyplot as plt
 
 def Calib(theta, *args):
-    total_pe, PMT_pos, cut = args
+    total_pe, PMT_pos, cut, LegendreCoeff = args
     y = total_pe
-    # fixed axis
-    x = Legendre_coeff(PMT_pos, cut)
+    '''
+    print(LegendreCoeff.shape)
+    print(theta.shape)
+    print(np.dot(LegendreCoeff, theta))
+    print((np.dot(LegendreCoeff, theta)).shape)
+    '''
     # Poisson regression
-    L = - np.sum(np.sum(np.transpose(y)*np.transpose(np.dot(x, theta)) \
-        - np.transpose(np.exp(np.dot(x, theta))))) + np.exp(np.sum(np.abs(theta))) \
-        + np.sum(np.abs(theta)) # L1 
+    L0 = - np.sum(np.sum(np.transpose(y)*np.transpose(np.dot(LegendreCoeff, theta)) \
+        - np.transpose(np.exp(np.dot(LegendreCoeff, theta)))))
+
+    L = L0 + np.exp(np.sum(np.abs(theta)))
+    # L = L0 + 0.01*2e5*np.exp(np.sum(np.abs(theta)))
+    # L = L0 + np.sum(np.abs(theta)) # standard L-0 norm
+    # L = L0 * np.exp(np.sum(np.abs(theta)))
     return L
 
-def Legendre_coeff(PMT_pos, cut):
-    vertex = np.array([0,2,10])
-    cos_theta = np.sum(vertex*PMT_pos,axis=1)\
-        /np.sqrt(np.sum(vertex**2)*np.sum(PMT_pos**2,axis=1))
-    # accurancy and nan value
-    cos_theta = np.nan_to_num(cos_theta)
-    cos_theta[cos_theta>1] = 1
-    cos_theta[cos_theta<-1] =-1
+def Legendre_coeff(PMT_pos, vertex, cut):
     size = np.size(PMT_pos[:,0])
+    if(np.sum(vertex**2) > 1e-6):
+        cos_theta = np.sum(vertex*PMT_pos,axis=1)\
+            /np.sqrt(np.sum(vertex**2)*np.sum(PMT_pos**2,axis=1))
+    else:
+        cos_theta = np.ones(size)
     x = np.zeros((size, cut))
     # legendre coeff
     for i in np.arange(0,cut):
@@ -34,28 +40,8 @@ def Legendre_coeff(PMT_pos, cut):
         x[:,i] = LG.legval(cos_theta,c)
     return x  
 
-def rosen_hess(x, *args):
-    x = np.asarray(x)
-    H = np.diag(-400*x[:-1],1) - np.diag(400*x[:-1],-1)
-    diagonal = np.zeros_like(x)
-    diagonal[0] = 1200*x[0]**2-400*x[1]+2
-    diagonal[-1] = 200
-    diagonal[1:-1] = 202 + 1200*x[1:-1]**2 - 400*x[2:]
-    H = H + np.diag(diagonal)
-    return H
-
-def rosen_der(x, *args):
-    xm = x[1:-1]
-    xm_m1 = x[:-2]
-    xm_p1 = x[2:]
-    der = np.zeros_like(x)
-    der[1:-1] = 200*(xm-xm_m1**2) - 400*(xm_p1 - xm**2)*xm - 2*(1-xm)
-    der[0] = -400*x[0]*(x[1]-x[0]**2) - 2*(1-x[0])
-    der[-1] = 200*(x[-1]-x[-2]**2)
-    return der
-
 def hessian(x, *args):
-    total_pe, PMT_pos, cut = args
+    total_pe, PMT_pos, cut, LegendreCoeff= args
     H = np.zeros((len(x),len(x)))
     h = 1e-3
     k = 1e-3
@@ -70,86 +56,165 @@ def hessian(x, *args):
                 delta2[j] = k
 
 
-                L1 = - Calib(x + delta1, *(total_pe, PMT_pos, cut))
-                L2 = - Calib(x - delta1, *(total_pe, PMT_pos, cut))
-                L3 = - Calib(x + delta2, *(total_pe, PMT_pos, cut))
-                L4 = - Calib(x - delta2, *(total_pe, PMT_pos, cut))
+                L1 = - Calib(x + delta1, *(total_pe, PMT_pos, cut, LegendreCoeff))
+                L2 = - Calib(x - delta1, *(total_pe, PMT_pos, cut, LegendreCoeff))
+                L3 = - Calib(x + delta2, *(total_pe, PMT_pos, cut, LegendreCoeff))
+                L4 = - Calib(x - delta2, *(total_pe, PMT_pos, cut, LegendreCoeff))
                 H[i,j] = (L1+L2-L3-L4)/(4*h*k)
             else:
                 delta = np.zeros(len(x))
                 delta[i] = h
-                L1 = - Calib(x + delta, *(total_pe, PMT_pos, cut))
-                L2 = - Calib(x - delta, *(total_pe, PMT_pos, cut))
-                L3 = - Calib(x, *(total_pe, PMT_pos, cut))
+                L1 = - Calib(x + delta, *(total_pe, PMT_pos, cut, LegendreCoeff))
+                L2 = - Calib(x - delta, *(total_pe, PMT_pos, cut, LegendreCoeff))
+                L3 = - Calib(x, *(total_pe, PMT_pos, cut, LegendreCoeff))
                 H[i,j] = (L1+L2-2*L3)/h**2                
     return H
 
-
-def main_Calib(radius, path, fout):
-    
-    #filename = '/mnt/stage/douwei/Simulation/1t_root/1.5MeV_015/1t_' + radius + '.h5'
-    filename = path + '1t_' + radius + '.h5'
-    # read files by table
+def readfile(filename):
     h1 = tables.open_file(filename,'r')
     print(filename)
     truthtable = h1.root.GroundTruth
     EventID = truthtable[:]['EventID']
     ChannelID = truthtable[:]['ChannelID']
+    
+    x = h1.root.TruthData[:]['x']
+    y = h1.root.TruthData[:]['y']
+    z = h1.root.TruthData[:]['z']
+        
     h1.close()
-    
-    # read file series
-    
-    try:
-        for j in np.arange(1,20,1):
-            filename = Energy + '/calib' + radius + '_' + str(j)+ '.h5'           
-            h1 = tables.open_file(filename,'r')
-            print(filename)
-            truthtable = h1.root.GroundTruth
 
-            EventID_tmp = truthtable[:]['EventID']
-            ChannelID_tmp = truthtable[:]['ChannelID']
-            EventID = np.hstack((EventID, EventID_tmp))
-            ChannelID = np.hstack((ChannelID, ChannelID_tmp))
-
-            h1.close()
-    except:
-        j = j - 1
+    dn = np.where((x==0) & (y==0) & (z==0))
+    dn_index = (x==0) & (y==0) & (z==0)
+    if(np.sum(x**2+y**2+z**2<0.1)>0):
+        cnt = 0        
+        for ID in np.arange(np.min(EventID), np.max(EventID)+1):
+            if ID in dn[0] + np.min(EventID):
+                cnt = cnt+1
+                #print('Trigger No:', EventID[EventID==ID])
+                #print('Fired PMT', ChannelID[EventID==ID])
+                
+                ChannelID = ChannelID[~(EventID == ID)]
+                EventID = EventID[~(EventID == ID)]
+                
+                #print(cnt, ID, EventID.shape,(np.unique(EventID)).shape)
+    x = x[~dn_index]
+    y = y[~dn_index]
+    z = z[~dn_index]
+    return (EventID, ChannelID, x, y, z)
     
-    total_pe = np.zeros((np.size(PMT_pos[:,0]),max(EventID)))
-    for k in np.arange(1, max(EventID)):
-        event_pe = np.zeros(np.size(PMT_pos[:,0]))
-        hit = ChannelID[EventID == k]
-        tabulate = np.bincount(hit)
-        event_pe[0:np.size(tabulate)] = tabulate
-        total_pe[:,k-1] = event_pe
-    with h5py.File(fout,'w') as out:        
-        for cut in np.arange(5,35,5):
+def readchain(radius, path, axis):
+    for i in np.arange(0,20):
+        if(i == 0):
+            #filename = path + '1t_' + radius + '.h5'
+            filename = '%s1t_%s_%s.h5' % (path, radius, axis)
+            EventID, ChannelID, x, y, z = readfile(filename)
+        else:
+            try:
+                filename = '%s1t_%s_%s_%d.h5' % (path, radius, axis, i)
+                EventID1, ChannelID1, x1, y1, z1 = readfile(filename)
+                EventID = np.hstack((EventID, EventID1))
+                ChannelID = np.hstack((ChannelID, ChannelID1))
+                x = np.hstack((x, x1))
+                y = np.hstack((y, y1))
+                z = np.hstack((z, z1))
+            except:
+                pass
+
+    return EventID, ChannelID, x, y, z
+    
+def main_Calib(radius, path, fout, cut_max):
+    print('begin read file')
+    #filename = '/mnt/stage/douwei/Simulation/1t_root/1.5MeV_015/1t_' + radius + '.h5'
+    with h5py.File(fout,'w') as out:
+        # read files by table
+        EventIDx, ChannelIDx, xx, yx, zx = readchain(radius, path, 'x')
+        EventIDy, ChannelIDy, xy, yy, zy = readchain(radius, path, 'y')
+        EventIDz, ChannelIDz, xz, yz, zz = readchain(radius, path, 'z')
+
+        EventIDy = EventIDy + np.max(EventIDx)
+        EventIDz = EventIDz + np.max(EventIDy)
+        
+        EventID = np.hstack((EventIDx, EventIDy, EventIDz))
+        ChannelID = np.hstack((ChannelIDx, ChannelIDy, ChannelIDz))
+        x = np.hstack((xx, xy, xz))
+        y = np.hstack((yx, yy, yz))
+        z = np.hstack((xz, yz, zz))
+
+        # written total_pe into a column
+        sizex = np.size(np.unique(EventIDx))
+        sizey = np.size(np.unique(EventIDy))
+        sizez = np.size(np.unique(EventIDz))
+        size = np.size(np.unique(EventID))
+        #print(sizex,sizey,sizez,size)
+        total_pe = np.zeros(np.size(PMT_pos[:,0])*size)
+        vertex = np.zeros((3,np.size(PMT_pos[:,0])*size))
+        print('total event: %d' % np.size(np.unique(EventID)))
+        for k_index, k in enumerate(np.unique(EventID)):
+            if not k_index % 1e4:
+                print('preprocessing %d-th event' % k_index)
+            hit = ChannelID[EventID == k]
+            tabulate = np.bincount(hit)
+            event_pe = np.zeros(np.size(PMT_pos[:,0]))
+            # tabulate begin with 0
+            event_pe[0:np.size(tabulate)] = tabulate
+            total_pe[(k_index) * np.size(PMT_pos[:,0]) : (k_index + 1) * np.size(PMT_pos[:,0])] = event_pe
+            # although it will be repeated, mainly for later EM:
+            # vertex[0,(k_index) * np.size(PMT_pos[:,0]) : (k_index + 1) * np.size(PMT_pos[:,0])] = x[k_index]
+            # vertex[1,(k_index) * np.size(PMT_pos[:,0]) : (k_index + 1) * np.size(PMT_pos[:,0])] = y[k_index]
+            # vertex[2,(k_index) * np.size(PMT_pos[:,0]) : (k_index + 1) * np.size(PMT_pos[:,0])] = z[k_index]
+            total_pe[(k_index) * np.size(PMT_pos[:,0]) : (k_index + 1) * np.size(PMT_pos[:,0])] = event_pe
+
+        print('begin processing legendre coeff')
+        # this part for the same vertex
+        tmp_x = Legendre_coeff(PMT_pos,np.array((xx[0], yx[0], zx[0]))/1e3, cut_max)
+        tmp_x = np.tile(tmp_x, (sizex,1))
+        tmp_y = Legendre_coeff(PMT_pos,np.array((xy[0], yy[0], zy[0]))/1e3, cut_max)
+        tmp_y = np.tile(tmp_y, (sizey,1))
+        tmp_z = Legendre_coeff(PMT_pos,np.array((xz[0], yz[0], zz[0]))/1e3, cut_max)
+        tmp_z = np.tile(tmp_z, (sizez,1))
+        LegendreCoeff = np.vstack((tmp_x, tmp_y, tmp_z))
+        # print(np.size(np.unique(EventID)), total_pe.shape, LegendreCoeff.shape)
+               
+        # this part for EM
+        '''
+        LegendreCoeff = np.zeros((0,cut_max))           
+        for k in np.arange(size):
+            LegendreCoeff = np.vstack((LegendreCoeff,Legendre_coeff(PMT_pos,np.array((x[k], y[k], z[k]))/1e3, cut_max)))
+       ''' 
+        print('begin get coeff')
+        
+        for cut in np.arange(5,cut_max,5):
+            
             theta0 = np.zeros(cut) # initial value
-            result = minimize(Calib,theta0, method='SLSQP', args = (total_pe, PMT_pos, cut))  
+            theta0[0] = 0.8 + np.log(2)
+            #print(total_pe.shape, total_pe)
+            #print(LegendreCoeff.shape, LegendreCoeff)
+            result = minimize(Calib, theta0, method='SLSQP', args = (total_pe, PMT_pos, cut, LegendreCoeff[:,0:cut]))  
             record = np.array(result.x, dtype=float)
-
-            H = hessian(result.x, *(total_pe, PMT_pos, cut))
+            
+            H = hessian(result.x, *(total_pe, PMT_pos, cut, LegendreCoeff[:,0:cut]))
             H_I = np.linalg.pinv(np.matrix(H))
-
-            x = Legendre_coeff(PMT_pos, cut)
-            mean = np.mean(total_pe, axis=1)
+            vs = np.reshape(total_pe[0:sizex*30],(-1,30), order='C')
+            mean = np.mean(vs, axis=0)
             args = (total_pe, PMT_pos, cut)
             predict = [];
-            predict.append(np.exp(np.dot(x, result.x)))
-            # predict.append(mean)
+            predict.append(np.exp(np.dot(LegendreCoeff[0:30,0:cut], result.x)))
+            print(mean)
+            print(predict)
             predict = np.transpose(predict)
-            chi2sq = 2*np.sum(- total_pe + predict + np.nan_to_num(total_pe*np.log(total_pe/predict)), axis=1)/(np.max(EventID)-30)
+            #chi2sq = 2*np.sum(- total_pe + predict + np.nan_to_num(total_pe*np.log(total_pe/predict)), axis=1)/(np.max(EventID)-30)
 
             # print(np.dot(x, result.x) - mean)
             # print(np.size(total_pe,1))
+
             print(record)
 
             out.create_dataset('coeff' + str(cut), data = record)
             out.create_dataset('mean' + str(cut), data = mean)
             out.create_dataset('predict' + str(cut), data = predict)
-            out.create_dataset('rate' + str(cut), data = np.size(total_pe,1))
+            out.create_dataset('rate' + str(cut), data = np.size(total_pe)/30)
             out.create_dataset('hinv' + str(cut), data = H_I)
-            out.create_dataset('chi' + str(cut), data = chi2sq)
+            #out.create_dataset('chi' + str(cut), data = chi2sq)
 
 ## read data from calib files
 f = open(r'./PMT_1t.txt')
@@ -162,5 +227,8 @@ while line:
 f.close()
 PMT_pos = np.array(data_list)
 
-#cut = 6 # Legend order
-main_Calib(sys.argv[1],sys.argv[2], sys.argv[3])
+# sys.argv[1]: '%s' radius
+# sys.argv[2]: '%s' path
+# sys.argv[3]: '%s' output
+# sys.argv[4]: '%d' cut
+main_Calib(sys.argv[1],sys.argv[2], sys.argv[3], eval(sys.argv[4]))

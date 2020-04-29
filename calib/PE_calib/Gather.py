@@ -16,23 +16,10 @@ def findfile(path, radius, order):
     h = tables.open_file(filename,'r')
     
     coeff = 'coeff' + str(order)
-    mean = 'mean' + str(order)
-    predict = 'predict' +str(order)
-    rate = 'rate' + str(order)
-    hinv = 'hinv' + str(order)
-    chi = 'chi' + str(order)
     
     a = eval('np.array(h.root.'+ coeff + '[:])')
-    b = eval('np.array(h.root.'+ mean + '[:])')
-    c = eval('np.array(h.root.'+ predict + '[:])')
-    try:
-        d = eval('h.root.'+ rate + '[:])')
-    except:
-        d = np.array(0)
-    e = eval('np.array(h.root.'+ hinv + '[:])')
-    f = eval('np.array(h.root.'+ chi + '[:])')
     
-    data.append(np.array(np.array((a,b,c,d,e,f))))
+    data.append(np.array(np.array(a)))
     h.close()
     return data
 
@@ -41,21 +28,11 @@ def main(path, upperlimit, lowerlimit, order_max):
     ra = np.arange(upperlimit + 1e-5, lowerlimit, -0.01)
     for order in np.arange(5, order_max, 5):
         coeff = []
-        mean = []
-        predict = []
-        rate = []
-        hinv = []
-        chi = []
         for radius in ra:
             str_radius = '%+.2f' % radius
             k = findfile(path, str_radius, order)
             k.append(np.array(radius))
-            coeff = np.hstack((coeff,np.array(k[0][0])))
-            mean = np.hstack((mean,np.array(k[0][1])))
-            predict = np.hstack((predict,np.array(k[0][2][:,0])))
-            #rate = np.hstack((rate,np.array(k[0][3])))
-            #hinv = np.hstack((hinv,np.array(k[0][4])))
-            chi = np.hstack((chi,np.array(k[0][5])))
+            coeff = np.hstack((coeff,np.array(k[0])))
 
         coeff = np.reshape(coeff,(-1,np.size(ra)),order='F')
         mean = np.reshape(mean,(-1,np.size(ra)),order='F')

@@ -5,46 +5,32 @@ import sys
 from scipy.optimize import minimize
 from numpy.polynomial import legendre as LG
 import matplotlib.pyplot as plt
-import os
-#os.chdir()
-#print(os.getcwd())
 
 def Calib(theta, *args):
-    ChannelID, flight_time, PMT_pos, cut = args
+    ChannelID, flight_time, PMT_pos, cut, LegendreCoeff = args
     y = flight_time
-    # fixed axis
-    x = Legendre_coeff(PMT_pos, cut)
-    Legend_coeff = x[ChannelID,:]
+    T_i = np.dot(LegendreCoeff, theta)
     # quantile regression
-    T_i = np.dot(Legend_coeff, theta)
-    L = Likelihood_quantile(y, T_i, 0.01, 0.3)
-    # L = np.log(np.sum((np.transpose(np.dot(Legend_coeff, theta))-y)**2))
-    # print(L)
+    # quantile = 0.01
+    L0 = Likelihood_quantile(y, T_i, 0.01, 0.3)
+    # L = L0
+    L = L0 + np.sum(np.abs(theta))
     return L
 
 def Likelihood_quantile(y, T_i, tau, ts):
     less = T_i[y<T_i] - y[y<T_i]
     more = y[y>=T_i] - T_i[y>=T_i]
-    
     R = (1-tau)*np.sum(less) + tau*np.sum(more)
     #log_Likelihood = exp
     return R
 
-def quantile_check(y, T_i, tau, ts):
-    less = T_i - y[y<T_i]
-    more = y[y>=T_i] - T_i
-    R = (1-tau)*np.sum(less) + tau*np.sum(more)
-    return R
-
-def Legendre_coeff(PMT_pos, cut):
-    vertex = np.array([0,0,2,10])
-    cos_theta = np.sum(vertex[1:4]*PMT_pos,axis=1) \
-        /np.sqrt(np.sum(vertex[1:4]**2)*np.sum(PMT_pos**2,axis=1))
-    # accurancy and nan value
-    cos_theta = np.nan_to_num(cos_theta)
-    cos_theta[cos_theta>1] = 1
-    cos_theta[cos_theta<-1] =-1
+def Legendre_coeff(PMT_pos, vertex, cut):
     size = np.size(PMT_pos[:,0])
+    if(np.sum(vertex**2) > 1e-6):
+        cos_theta = np.sum(vertex*PMT_pos,axis=1) \
+            /np.sqrt(np.sum(vertex**2)*np.sum(PMT_pos**2,axis=1))
+    else:
+        cos_theta = np.ones(size)
     x = np.zeros((size, cut))
     # legendre coeff
     for i in np.arange(0, cut):
@@ -53,28 +39,8 @@ def Legendre_coeff(PMT_pos, cut):
         x[:,i] = LG.legval(cos_theta,c)
     return x  
 
-def rosen_hess(x, *args):
-    x = np.asarray(x)
-    H = np.diag(-400*x[:-1],1) - np.diag(400*x[:-1],-1)
-    diagonal = np.zeros_like(x)
-    diagonal[0] = 1200*x[0]**2-400*x[1]+2
-    diagonal[-1] = 200
-    diagonal[1:-1] = 202 + 1200*x[1:-1]**2 - 400*x[2:]
-    H = H + np.diag(diagonal)
-    return H
-
-def rosen_der(x, *args):
-    xm = x[1:-1]
-    xm_m1 = x[:-2]
-    xm_p1 = x[2:]
-    der = np.zeros_like(x)
-    der[1:-1] = 200*(xm-xm_m1**2) - 400*(xm_p1 - xm**2)*xm - 2*(1-xm)
-    der[0] = -400*x[0]*(x[1]-x[0]**2) - 2*(1-x[0])
-    der[-1] = 200*(x[-1]-x[-2]**2)
-    return der
-
 def hessian(x, *args):
-    ChannelID, PETime, PMT_pos, cut = args
+    ChannelID, PETime, PMT_pos, cut, LegendreCoeff = args
     H = np.zeros((len(x),len(x)))
     h = 1e-3
     k = 1e-3
@@ -89,25 +55,22 @@ def hessian(x, *args):
                 delta2[j] = k
 
 
-                L1 = - Calib(x + delta1, *(total_pe, PMT_pos, cut))
-                L2 = - Calib(x - delta1, *(total_pe, PMT_pos, cut))
-                L3 = - Calib(x + delta2, *(total_pe, PMT_pos, cut))
-                L4 = - Calib(x - delta2, *(total_pe, PMT_pos, cut))
+                L1 = - Calib(x + delta1, *(total_pe, PMT_pos, cut, LegendreCoeff))
+                L2 = - Calib(x - delta1, *(total_pe, PMT_pos, cut, LegendreCoeff))
+                L3 = - Calib(x + delta2, *(total_pe, PMT_pos, cut, LegendreCoeff))
+                L4 = - Calib(x - delta2, *(total_pe, PMT_pos, cut, LegendreCoeff))
                 H[i,j] = (L1+L2-L3-L4)/(4*h*k)
             else:
                 delta = np.zeros(len(x))
                 delta[i] = h
-                L1 = - Calib(x + delta, *(total_pe, PMT_pos, cut))
-                L2 = - Calib(x - delta, *(total_pe, PMT_pos, cut))
-                L3 = - Calib(x, *(total_pe, PMT_pos, cut))
+                L1 = - Calib(x + delta, *(total_pe, PMT_pos, cut, LegendreCoeff))
+                L2 = - Calib(x - delta, *(total_pe, PMT_pos, cut, LegendreCoeff))
+                L3 = - Calib(x, *(total_pe, PMT_pos, cut, LegendreCoeff))
                 H[i,j] = (L1+L2-2*L3)/h**2                
     return H
 
-
-def main_Calib(radius, path, fout):
-    #filename = '/mnt/stage/douwei/Simulation/1t_root/1.5MeV_015/1t_' + radius + '.h5'
-    filename = path + '1t_' + radius + '.h5'
-    # read files by table
+def readfile(filename):
+# read files by table
     h1 = tables.open_file(filename,'r')
     print(filename)
     truthtable = h1.root.GroundTruth
@@ -117,58 +80,125 @@ def main_Calib(radius, path, fout):
     photonTime = truthtable[:]['photonTime']
     PulseTime = truthtable[:]['PulseTime']
     dETime = truthtable[:]['dETime']
+    
+    x = h1.root.TruthData[:]['x']
+    y = h1.root.TruthData[:]['y']
+    z = h1.root.TruthData[:]['z']
+    
     h1.close()
     
-    # read file series
-    
-    try:
-        for j in np.arange(1,10,1):
-            filename = Energy + '/calib' + radius + '_' + str(j)+ '.h5'           
-            h1 = tables.open_file(filename,'r')
-            print(filename)
-            truthtable = h1.root.GroundTruth
+    dn = np.where((x==0) & (y==0) & (z==0))
+    dn_index = (x==0) & (y==0) & (z==0)
+    if(np.sum(x**2+y**2+z**2<0.1)>0):
+        cnt = 0        
+        for ID in np.arange(np.min(EventID), np.max(EventID)+1):
+            if ID in dn[0] + np.min(EventID):
+                cnt = cnt+1
+                #print('Trigger No:', EventID[EventID==ID])
+                #print('Fired PMT', ChannelID[EventID==ID])
+                
+                ChannelID = ChannelID[~(EventID == ID)]
+                PETime = PETime[~(EventID == ID)]
+                photonTime = photonTime[~(EventID == ID)]
+                PulseTime = PulseTime[~(EventID == ID)]
+                dETime = dETime[~(EventID == ID)]
+                EventID = EventID[~(EventID == ID)]
+                
+    x = x[~dn_index]
+    y = y[~dn_index]
+    z = z[~dn_index]
+        
+    return (EventID, ChannelID, PETime, photonTime, PulseTime, dETime, x, y, z)
 
-            EventID_tmp = truthtable[:]['EventID']
-            ChannelID_tmp = truthtable[:]['ChannelID']
-            PETime_tmp = truthtable[:]['PETime']
-            photonTime_tmp = truthtable[:]['photonTime']
-            PulseTime_tmp = truthtable[:]['PulseTime']
-            dETime_tmp = truthtable[:]['dETime']
-            
-            EventID = np.hstack((EventID, EventID_tmp))
-            ChannelID = np.hstack((ChannelID, ChannelID_tmp))
-            PETime = np.hstack((PETime, PETime_tmp))
-            photonTime = np.hstack((photonTime, photonTime_tmp))
-            PulseTime = np.hstack((PulseTime, PulseTime_tmp))
-            dETime = np.hstack((dETime, dETime_tmp))
-            
-            h1.close()
-    except:
-        j = j - 1
-    
-    total_pe = np.zeros((np.size(PMT_pos[:,0]),max(EventID)))
-    
-    flight_time = PulseTime - dETime
-    ChannelID = ChannelID[~(flight_time==0)]
-    flight_time = flight_time[~(flight_time==0)]
+def readchain(radius, path, axis):
+    for i in np.arange(0,20):
+        if(i == 0):
+            #filename = path + '1t_' + radius + '.h5'
+            filename = '%s1t_%s_%s.h5' % (path, radius, axis)
+            EventID, ChannelID, PETime, photonTime, PulseTime, dETime, x, y, z = readfile(filename)
+        else:
+            try:
+                filename = '%s1t_%s_%s_%d.h5' % (path, radius, axis, i)
+                EventID1, ChannelID1, PETime1, photonTime1, PulseTime1, dETime1, x1, y1, z1 = readfile(filename)
+                EventID = np.hstack((EventID, EventID1))
+                ChannelID = np.hstack((ChannelID, ChannelID1))
+                PETime = np.hstack((PETime,PETime1))
+                photonTime = np.hstack((photonTime, photonTime1))
+                PulseTime = np.hstack((PulseTime, PulseTime1))
+                dETime = np.hstack((dETime, dETime1))
+                x = np.hstack((x, x1))
+                y = np.hstack((y, y1))
+                z = np.hstack((z, z1))
+            except:
+                pass
+    return EventID, ChannelID, PETime, photonTime, PulseTime, dETime, x, y, z
 
-    
+def main_Calib(radius, path, fout, cut_max):
+    #filename = '/mnt/stage/douwei/Simulation/1t_root/1.5MeV_015/1t_' + radius + '.h5' 
     with h5py.File(fout,'w') as out:
-        for cut in np.arange(5,35,5):
+        # read files by table
+        EventIDx, ChannelIDx, PETimex, photonTimex, PulseTimex, dETimex, xx, yx, zx = readchain(radius, path, 'x')
+        EventIDy, ChannelIDy, PETimey, photonTimey, PulseTimey, dETimey, xy, yy, zy = readchain(radius, path, 'y')
+        EventIDz, ChannelIDz, PETimez, photonTimez, PulseTimez, dETimez, xz, yz, zz = readchain(radius, path, 'z')
+
+        EventIDy = EventIDy + np.max(EventIDx)
+        EventIDz = EventIDz + np.max(EventIDy)
+        
+        # dark noise (np.unique EventID should not change since the pure trigger by dark noise has been filtered!)
+        flight_timex = PulseTimex - dETimex        
+        EventIDx = EventIDx[~(flight_timex==0)]
+        ChannelIDx = ChannelIDx[~(flight_timex==0)]
+        flight_timex = flight_timex[~(flight_timex==0)]
+        flight_timey = PulseTimey - dETimey       
+        EventIDy = EventIDy[~(flight_timey==0)]
+        ChannelIDy = ChannelIDy[~(flight_timey==0)]
+        flight_timey = flight_timey[~(flight_timey==0)]
+        flight_timez = PulseTimez - dETimez        
+        EventIDz = EventIDz[~(flight_timez==0)]
+        ChannelIDz = ChannelIDz[~(flight_timez==0)]
+        flight_timez = flight_timez[~(flight_timez==0)]
+        
+        EventID = np.hstack((EventIDx, EventIDy, EventIDz))
+        ChannelID = np.hstack((ChannelIDx, ChannelIDy, ChannelIDz))
+        PETime = np.hstack((PETimex, PETimey, PETimez))
+        photonTime = np.hstack((photonTimex, photonTimey, photonTimez))
+        PulseTime = np.hstack((PulseTimex, PulseTimey, PulseTimez))
+        dETime = np.hstack((dETimex, dETimey, dETimez))
+        flight_time = np.hstack((flight_timex, flight_timey, flight_timez))
+        x = np.hstack((xx, xy, xz))
+        y = np.hstack((yx, yy, yz))
+        z = np.hstack((xz, yz, zz))
+\
+        print('begin processing legendre coeff')
+        # this part for the same vertex
+        tmp_x = Legendre_coeff(PMT_pos,np.array((xx[0], yx[0], zx[0]))/1e3, cut_max)
+        tmp_x = tmp_x[ChannelIDx]
+        tmp_y = Legendre_coeff(PMT_pos,np.array((xy[0], yy[0], zy[0]))/1e3, cut_max)
+        tmp_y = tmp_y[ChannelIDy]
+        tmp_z = Legendre_coeff(PMT_pos,np.array((xz[0], yz[0], zz[0]))/1e3, cut_max)
+        tmp_z = tmp_z[ChannelIDz]     
+        LegendreCoeff = np.vstack((tmp_x, tmp_y, tmp_z))
+        print(ChannelID.shape, LegendreCoeff.shape)
+        # this part for EM
+        '''
+        LegendreCoeff = np.zeros((0,cut_max))
+        for k_index, k in enumerate(np.unique(EventID)):
+            tmp = Legendre_coeff(PMT_pos,np.array((x[k_index], y[k_index], z[k_index]))/1e3, cut_max)
+            single_index = ChannelID[EventID==k]
+            LegendreCoeff = np.vstack((LegendreCoeff,tmp[single_index]))
+       '''
+        print('finish calc coeff')
+        
+        for cut in np.arange(5,cut_max + 5,5):
+
             theta0 = np.zeros(cut) # initial value
             theta0[0] = np.mean(flight_time) - 26
-            result = minimize(Calib,theta0, method='SLSQP',args = (ChannelID, flight_time, PMT_pos, cut))  
+            result = minimize(Calib,theta0, method='SLSQP',args = (ChannelID, flight_time, PMT_pos, cut, LegendreCoeff[:,0:cut]))  
             record = np.array(result.x, dtype=float)
             print(result.x)
-
-            x = Legendre_coeff(PMT_pos, cut)
-            predict = [];
-            predict.append(np.dot(x, result.x))
-
+            
             out.create_dataset('coeff' + str(cut), data = record)
-            out.create_dataset('ft' + str(cut), data = flight_time)
-            out.create_dataset('ch' + str(cut), data = ChannelID)
-            out.create_dataset('predict' + str(cut), data = predict)
+
 
 f = open(r'./PMT_1t.txt')
 line = f.readline()
@@ -180,4 +210,8 @@ while line:
 f.close()
 PMT_pos = np.array(data_list)
 
-main_Calib(sys.argv[1],sys.argv[2], sys.argv[3])
+# sys.argv[1]: '%s' radius
+# sys.argv[2]: '%s' path
+# sys.argv[3]: '%s' output
+# sys.argv[4]: '%d' cut
+main_Calib(sys.argv[1],sys.argv[2], sys.argv[3], eval(sys.argv[4]))
