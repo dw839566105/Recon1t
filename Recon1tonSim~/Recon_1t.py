@@ -310,10 +310,7 @@ def recon(fid, fout, *args):
         x0_in = np.zeros((1,5))
         x0_in[0][0] = 0.8 + np.log(np.sum(pe_array)/60)
         x0_in[0][4] = np.mean(time_array) - 26
-        xyz = np.sum(pe_array*PMT_pos)/np.sum(pe_array)/shell
-        a = c2r(xyz)
-        print(a)
-        exit()
+
         x0_in[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)/shell
         x0_in[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)/shell
         x0_in[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)/shell

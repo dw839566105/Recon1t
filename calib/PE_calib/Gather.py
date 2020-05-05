@@ -17,10 +17,10 @@ def findfile(path, radius, order):
     
     coeff = 'coeff' + str(order)
     
-    a = eval('np.array(h.root.'+ coeff + '[:])')
-    
-    data.append(np.array(np.array(a)))
+    data = eval('np.array(h.root.'+ coeff + '[:])')
     h.close()
+    if(eval(radius)<0):
+        data[1::2] = - data[1::2]
     return data
 
 def main(path, upperlimit, lowerlimit, order_max):
@@ -28,16 +28,17 @@ def main(path, upperlimit, lowerlimit, order_max):
     ra = np.arange(upperlimit + 1e-5, lowerlimit, -0.01)
     for order in np.arange(5, order_max, 5):
         coeff = []
+        rd = []
         for radius in ra:
             str_radius = '%+.2f' % radius
             k = findfile(path, str_radius, order)
-            k.append(np.array(radius))
-            coeff = np.hstack((coeff,np.array(k[0])))
+            rd.append(np.array(radius))
+            coeff = np.hstack((coeff, k))
 
         coeff = np.reshape(coeff,(-1,np.size(ra)),order='F')
-        mean = np.reshape(mean,(-1,np.size(ra)),order='F')
-        predict = np.reshape(predict,(-1,np.size(ra)),order='F')
-        chi = np.reshape(chi,(-1,np.size(ra)),order='F')
+        #mean = np.reshape(mean,(-1,np.size(ra)),order='F')
+        #predict = np.reshape(predict,(-1,np.size(ra)),order='F')
+        #chi = np.reshape(chi,(-1,np.size(ra)),order='F')
 
         N_max = np.size(coeff[:,0])
         bd_1 = 0.75
@@ -87,10 +88,10 @@ def main(path, upperlimit, lowerlimit, order_max):
             k2[i,:] = popt3
             
         with h5py.File('./PE_coeff_1t' + str(order) + '.h5','w') as out:
-            out.create_dataset('coeff', data = coeff)
-            out.create_dataset('mean', data = mean)
-            out.create_dataset('predict', data = predict)
-            out.create_dataset('chi', data = chi)
+            #out.create_dataset('coeff', data = coeff)
+            #out.create_dataset('mean', data = mean)
+            #out.create_dataset('predict', data = predict)
+            #out.create_dataset('chi', data = chi)
             out.create_dataset('poly_in', data = k1)
             out.create_dataset('poly_out', data = k2)
     

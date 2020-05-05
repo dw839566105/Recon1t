@@ -80,15 +80,19 @@ def readfile(filename):
     x = h1.root.TruthData[:]['x']
     y = h1.root.TruthData[:]['y']
     z = h1.root.TruthData[:]['z']
-        
+    #print(x.shape)
+    #print(np.sum(x**2+y**2+z**2<0.1))
+    #exit()
     h1.close()
-
+    #print(x.shape, EventID.shape, np.unique(EventID).shape, np.std(y),np.sum(x**2+y**2+z**2>0.1))
     dn = np.where((x==0) & (y==0) & (z==0))
     dn_index = (x==0) & (y==0) & (z==0)
-    if(np.sum(x**2+y**2+z**2<0.1)>0):
+    #print(np.sum(dn_index))
+    pin = dn[0] + np.min(EventID)
+    if(np.sum(x**2+y**2+z**2>0.1)>0):
         cnt = 0        
         for ID in np.arange(np.min(EventID), np.max(EventID)+1):
-            if ID in dn[0] + np.min(EventID):
+            if ID in pin:
                 cnt = cnt+1
                 #print('Trigger No:', EventID[EventID==ID])
                 #print('Fired PMT', ChannelID[EventID==ID])
@@ -97,13 +101,14 @@ def readfile(filename):
                 EventID = EventID[~(EventID == ID)]
                 
                 #print(cnt, ID, EventID.shape,(np.unique(EventID)).shape)
-    x = x[~dn_index]
-    y = y[~dn_index]
-    z = z[~dn_index]
+        x = x[~dn_index]
+        y = y[~dn_index]
+        z = z[~dn_index]
+    #print(x.shape, EventID.shape, np.unique(EventID).shape,np.std(y),np.sum(x**2+y**2+z**2>0.1))
     return (EventID, ChannelID, x, y, z)
     
 def readchain(radius, path, axis):
-    for i in np.arange(0,20):
+    for i in np.arange(0, 1):
         if(i == 0):
             #filename = path + '1t_' + radius + '.h5'
             filename = '%s1t_%s_%s.h5' % (path, radius, axis)
@@ -130,7 +135,6 @@ def main_Calib(radius, path, fout, cut_max):
         EventIDx, ChannelIDx, xx, yx, zx = readchain(radius, path, 'x')
         EventIDy, ChannelIDy, xy, yy, zy = readchain(radius, path, 'y')
         EventIDz, ChannelIDz, xz, yz, zz = readchain(radius, path, 'z')
-
         EventIDy = EventIDy + np.max(EventIDx)
         EventIDz = EventIDz + np.max(EventIDy)
         
@@ -166,12 +170,18 @@ def main_Calib(radius, path, fout, cut_max):
 
         print('begin processing legendre coeff')
         # this part for the same vertex
-        tmp_x = Legendre_coeff(PMT_pos,np.array((xx[0], yx[0], zx[0]))/1e3, cut_max)
+        tmp_x = Legendre_coeff(PMT_pos,np.array((xx[0], xy[0], xz[0]))/1e3, cut_max)
+
         tmp_x = np.tile(tmp_x, (sizex,1))
-        tmp_y = Legendre_coeff(PMT_pos,np.array((xy[0], yy[0], zy[0]))/1e3, cut_max)
+        tmp_y = Legendre_coeff(PMT_pos,np.array((yx[0], yy[0], yz[0]))/1e3, cut_max)
         tmp_y = np.tile(tmp_y, (sizey,1))
-        tmp_z = Legendre_coeff(PMT_pos,np.array((xz[0], yz[0], zz[0]))/1e3, cut_max)
+        tmp_z = Legendre_coeff(PMT_pos,np.array((zx[0], zy[0], zz[0]))/1e3, cut_max)
         tmp_z = np.tile(tmp_z, (sizez,1))
+                
+        print(xx[0],xy[0],xz[0])
+        print(yx[0],yy[0],yz[0])
+        print(zx[0],zy[0],zz[0])
+        
         LegendreCoeff = np.vstack((tmp_x, tmp_y, tmp_z))
         # print(np.size(np.unique(EventID)), total_pe.shape, LegendreCoeff.shape)
                
@@ -208,12 +218,12 @@ def main_Calib(radius, path, fout, cut_max):
             # print(np.size(total_pe,1))
 
             print(record)
-
             out.create_dataset('coeff' + str(cut), data = record)
-            out.create_dataset('mean' + str(cut), data = mean)
-            out.create_dataset('predict' + str(cut), data = predict)
-            out.create_dataset('rate' + str(cut), data = np.size(total_pe)/30)
-            out.create_dataset('hinv' + str(cut), data = H_I)
+            print('saved')
+            #out.create_dataset('mean' + str(cut), data = mean)
+            #out.create_dataset('predict' + str(cut), data = predict)
+            #out.create_dataset('rate' + str(cut), data = np.size(total_pe)/30)
+            #out.create_dataset('hinv' + str(cut), data = H_I)
             #out.create_dataset('chi' + str(cut), data = chi2sq)
 
 ## read data from calib files

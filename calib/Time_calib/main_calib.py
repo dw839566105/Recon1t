@@ -89,10 +89,11 @@ def readfile(filename):
     
     dn = np.where((x==0) & (y==0) & (z==0))
     dn_index = (x==0) & (y==0) & (z==0)
-    if(np.sum(x**2+y**2+z**2<0.1)>0):
+    pin = dn[0] + np.min(EventID)
+    if(np.sum(x**2+y**2+z**2>0.1)>0):
         cnt = 0        
         for ID in np.arange(np.min(EventID), np.max(EventID)+1):
-            if ID in dn[0] + np.min(EventID):
+            if ID in pin:
                 cnt = cnt+1
                 #print('Trigger No:', EventID[EventID==ID])
                 #print('Fired PMT', ChannelID[EventID==ID])
@@ -104,14 +105,14 @@ def readfile(filename):
                 dETime = dETime[~(EventID == ID)]
                 EventID = EventID[~(EventID == ID)]
                 
-    x = x[~dn_index]
-    y = y[~dn_index]
-    z = z[~dn_index]
-        
+        x = x[~dn_index]
+        y = y[~dn_index]
+        z = z[~dn_index]
+    
     return (EventID, ChannelID, PETime, photonTime, PulseTime, dETime, x, y, z)
 
 def readchain(radius, path, axis):
-    for i in np.arange(0,20):
+    for i in np.arange(0,2):
         if(i == 0):
             #filename = path + '1t_' + radius + '.h5'
             filename = '%s1t_%s_%s.h5' % (path, radius, axis)
@@ -168,14 +169,14 @@ def main_Calib(radius, path, fout, cut_max):
         x = np.hstack((xx, xy, xz))
         y = np.hstack((yx, yy, yz))
         z = np.hstack((xz, yz, zz))
-\
+
         print('begin processing legendre coeff')
         # this part for the same vertex
-        tmp_x = Legendre_coeff(PMT_pos,np.array((xx[0], yx[0], zx[0]))/1e3, cut_max)
+        tmp_x = Legendre_coeff(PMT_pos,np.array((xx[0], xy[0], xz[0]))/1e3, cut_max)
         tmp_x = tmp_x[ChannelIDx]
-        tmp_y = Legendre_coeff(PMT_pos,np.array((xy[0], yy[0], zy[0]))/1e3, cut_max)
+        tmp_y = Legendre_coeff(PMT_pos,np.array((yx[0], yy[0], yz[0]))/1e3, cut_max)
         tmp_y = tmp_y[ChannelIDy]
-        tmp_z = Legendre_coeff(PMT_pos,np.array((xz[0], yz[0], zz[0]))/1e3, cut_max)
+        tmp_z = Legendre_coeff(PMT_pos,np.array((zx[0], zy[0], zz[0]))/1e3, cut_max)
         tmp_z = tmp_z[ChannelIDz]     
         LegendreCoeff = np.vstack((tmp_x, tmp_y, tmp_z))
         print(ChannelID.shape, LegendreCoeff.shape)

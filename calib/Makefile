@@ -16,14 +16,14 @@ src_time:=$(radius:%=$(save_time)/file_%.h5)
 order:=15
 
 all:coeff_pe coeff_time
-
+#all:$(src_pe) $(src_time)
 $(save_pe)/file_%.h5:
 	mkdir -p $(save_pe)
-	python3 PE_calib/main_calib.py $* $(path) $@ $(order)
+	python3 PE_calib/main_calib.py $* $(path) $@ $(order) > logs/PE$*.log
 
 $(save_time)/file_%.h5:
 	mkdir -p $(save_time)
-	python3 Time_calib/main_calib.py $* $(path) $@ $(order)
+	python3 Time_calib/main_calib.py $* $(path) $@ $(order) > logs/Time$*.log
 
 coeff_pe:$(src_pe)
 	python3 PE_calib/Gather.py ./$(save_pe)/ $(upper) $(lower) $(order)

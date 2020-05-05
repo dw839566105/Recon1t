@@ -70,6 +70,9 @@ def Likelihood_PE(vertex, *args):
             
     cos_theta = np.sum(vertex[1:4]*PMT_pos,axis=1)\
         /np.sqrt(np.sum(vertex[1:4]**2)*np.sum(PMT_pos**2,axis=1))
+    print(cos_theta)
+    exit()
+        
     # accurancy and nan value
     cos_theta = np.nan_to_num(cos_theta)
     cos_theta[cos_theta>1] = 1

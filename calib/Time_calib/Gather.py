@@ -16,17 +16,11 @@ def findfile(path, radius, order):
     h = tables.open_file(filename,'r')
     
     coeff = 'coeff' + str(order)
-    ft = 'ft' + str(order)
-    ch = 'ch' + str(order)
-    predict = 'predict' +str(order)
-    
-    a = eval('np.array(h.root.'+ coeff + '[:])')
-    b = eval('np.array(h.root.'+ ft + '[:])')
-    c = eval('np.array(h.root.'+ ch + '[:])')
-    d = eval('np.array(h.root.'+ predict + '[:])')
-
-    data.append(np.array(np.array((a,b,c,d))))
+   
+    data = eval('np.array(h.root.'+ coeff + '[:])')
     h.close()
+    if(eval(radius)<0):
+        data[1::2] = - data[1::2]
     return data
 
 def main(path, upperlimit, lowerlimit, order_max):
@@ -34,20 +28,14 @@ def main(path, upperlimit, lowerlimit, order_max):
     ra = np.arange(upperlimit + 1e-5, lowerlimit, -0.01)
     for order in np.arange(5, order_max, 5):
         coeff = []
-        ft = []
-        ch = []
-        predict = []
-
+        rd = []
         for radius in ra:
             str_radius = '%+.2f' % radius
             k = findfile(path, str_radius, order)
-            k.append(np.array(radius))
-            coeff = np.hstack((coeff,np.array(k[0][0])))
-            ft = np.hstack((ft,np.array(k[0][1])))
-            ch = np.hstack((ch,np.array(k[0][2])))
-            predict = np.hstack((predict,np.array(k[0][3][0])))
+            rd.append(np.array(radius))
+            coeff = np.hstack((coeff, k))
 
-        coeff = np.reshape(coeff,(-1,np.size(ra)),order='F')
+        coeff = np.reshape(coeff,(-1,np.size(rd)),order='F')
         #print(coeff)
         #ft= np.reshape(ft,(-1,np.size(ra)),order='F')
         #ch= np.reshape(ch,(-1,np.size(ra)),order='F')
@@ -102,9 +90,6 @@ def main(path, upperlimit, lowerlimit, order_max):
             
         with h5py.File('./Time_coeff_1t' + str(order) + '.h5','w') as out:
             out.create_dataset('coeff', data = coeff)
-            out.create_dataset('ft', data = ft)
-            out.create_dataset('ch', data = ch)
-            out.create_dataset('predict', data = predict)
             out.create_dataset('poly_in', data = k1)
             out.create_dataset('poly_out', data = k2)
     
