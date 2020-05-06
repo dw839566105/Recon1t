@@ -132,23 +132,57 @@ def main_Calib(radius, path, fout, cut_max):
     #filename = '/mnt/stage/douwei/Simulation/1t_root/1.5MeV_015/1t_' + radius + '.h5'
     with h5py.File(fout,'w') as out:
         # read files by table
-        EventIDx, ChannelIDx, xx, yx, zx = readchain(radius, path, 'x')
-        EventIDy, ChannelIDy, xy, yy, zy = readchain(radius, path, 'y')
-        EventIDz, ChannelIDz, xz, yz, zz = readchain(radius, path, 'z')
+        # positive direction
+        EventIDx, ChannelIDx, xx, yx, zx = readchain('+' + radius, path, 'x')
+        EventIDy, ChannelIDy, xy, yy, zy = readchain('+' + radius, path, 'y')
+        EventIDz, ChannelIDz, xz, yz, zz = readchain('+' + radius, path, 'z')
         EventIDy = EventIDy + np.max(EventIDx)
         EventIDz = EventIDz + np.max(EventIDy)
-        
-        EventID = np.hstack((EventIDx, EventIDy, EventIDz))
-        ChannelID = np.hstack((ChannelIDx, ChannelIDy, ChannelIDz))
-        x = np.hstack((xx, xy, xz))
-        y = np.hstack((yx, yy, yz))
-        z = np.hstack((xz, yz, zz))
+        x1 = np.array((xx[0], yx[0], xz[0]))
+        y1 = np.array((xy[0], yy[0], zy[0]))
+        z1 = np.array((xz[0], yz[0], zz[0]))
+        sizex_p = np.size(np.unique(EventIDx))
+        sizey_p = np.size(np.unique(EventIDy))
+        sizez_p = np.size(np.unique(EventIDz))
 
+        EventID_p = np.hstack((EventIDx, EventIDy, EventIDz))
+        ChannelID_p = np.hstack((ChannelIDx, ChannelIDy, ChannelIDz))
+        x_p = np.hstack((xx, xy, xz))
+        y_p = np.hstack((yx, yy, yz))
+        z_p = np.hstack((xz, yz, zz))
+        
+        # negative direction
+        EventIDx, ChannelIDx, xx, yx, zx = readchain('-' + radius, path, 'x')
+        EventIDy, ChannelIDy, xy, yy, zy = readchain('-' + radius, path, 'y')
+        EventIDz, ChannelIDz, xz, yz, zz = readchain('-' + radius, path, 'z')
+        EventIDy = EventIDy + np.max(EventIDx)
+        EventIDz = EventIDz + np.max(EventIDy)
+        x2 = np.array((xx[0], yx[0], xz[0]))
+        y2 = np.array((xy[0], yy[0], zy[0]))
+        z2 = np.array((xz[0], yz[0], zz[0]))
+        
+        EventID_n = np.hstack((EventIDx, EventIDy, EventIDz)) + np.max(EventID_p)
+        ChannelID_n = np.hstack((ChannelIDx, ChannelIDy, ChannelIDz))
+        x_n = np.hstack((xx, xy, xz))
+        y_n = np.hstack((yx, yy, yz))
+        z_n = np.hstack((xz, yz, zz))
+        
         # written total_pe into a column
-        sizex = np.size(np.unique(EventIDx))
-        sizey = np.size(np.unique(EventIDy))
-        sizez = np.size(np.unique(EventIDz))
+        sizex_n = np.size(np.unique(EventIDx))
+        sizey_n = np.size(np.unique(EventIDy))
+        sizez_n = np.size(np.unique(EventIDz))
+        
+        # gather
+        EventID = np.hstack((EventID_p, EventID_n))
+        ChannelID = np.hstack((ChannelID_p, ChannelID_n))
+        x = np.hstack((x_p, x_n))
+        y = np.hstack((y_p, y_n))
+        z = np.hstack((z_p, z_n))         
+        
+        print(sizex_p,sizex_n,sizey_p,sizey_n,sizez_p, sizez_n)
+
         size = np.size(np.unique(EventID))
+        print(size)
         #print(sizex,sizey,sizez,size)
         total_pe = np.zeros(np.size(PMT_pos[:,0])*size)
         vertex = np.zeros((3,np.size(PMT_pos[:,0])*size))
@@ -170,19 +204,24 @@ def main_Calib(radius, path, fout, cut_max):
 
         print('begin processing legendre coeff')
         # this part for the same vertex
-        tmp_x = Legendre_coeff(PMT_pos,np.array((xx[0], xy[0], xz[0]))/1e3, cut_max)
-
-        tmp_x = np.tile(tmp_x, (sizex,1))
-        tmp_y = Legendre_coeff(PMT_pos,np.array((yx[0], yy[0], yz[0]))/1e3, cut_max)
-        tmp_y = np.tile(tmp_y, (sizey,1))
-        tmp_z = Legendre_coeff(PMT_pos,np.array((zx[0], zy[0], zz[0]))/1e3, cut_max)
-        tmp_z = np.tile(tmp_z, (sizez,1))
-                
-        print(xx[0],xy[0],xz[0])
-        print(yx[0],yy[0],yz[0])
-        print(zx[0],zy[0],zz[0])
-        
-        LegendreCoeff = np.vstack((tmp_x, tmp_y, tmp_z))
+        tmp_x_p = Legendre_coeff(PMT_pos, x1/1e3, cut_max)
+        tmp_x_p = np.tile(tmp_x_p, (sizex_p,1))
+        tmp_y_p = Legendre_coeff(PMT_pos, y1/1e3, cut_max)
+        tmp_y_p = np.tile(tmp_y_p, (sizey_p,1))
+        tmp_z_p = Legendre_coeff(PMT_pos, z1/1e3, cut_max)
+        tmp_z_p = np.tile(tmp_z_p, (sizez_p,1))
+        tmp_x_n = Legendre_coeff(PMT_pos, x2/1e3, cut_max)
+        tmp_x_n = np.tile(tmp_x_n, (sizex_n,1))
+        tmp_y_n = Legendre_coeff(PMT_pos, y2/1e3, cut_max)
+        tmp_y_n = np.tile(tmp_y_n, (sizey_n,1))
+        tmp_z_n = Legendre_coeff(PMT_pos, z2/1e3, cut_max)
+        tmp_z_n = np.tile(tmp_z_n, (sizez_n,1))              
+        #print(xx[0],xy[0],xz[0])
+        #print(yx[0],yy[0],yz[0])
+        #print(zx[0],zy[0],zz[0])
+        print(tmp_x_p.shape)
+        LegendreCoeff = np.vstack((tmp_x_p, tmp_y_p, tmp_z_p, tmp_x_n, tmp_y_n, tmp_z_n))
+        print(tmp_x_p.shape, tmp_y_p.shape, tmp_z_p.shape, tmp_x_n.shape, tmp_y_n.shape, tmp_z_n.shape)
         # print(np.size(np.unique(EventID)), total_pe.shape, LegendreCoeff.shape)
                
         # this part for EM
@@ -192,6 +231,8 @@ def main_Calib(radius, path, fout, cut_max):
             LegendreCoeff = np.vstack((LegendreCoeff,Legendre_coeff(PMT_pos,np.array((x[k], y[k], z[k]))/1e3, cut_max)))
        ''' 
         print('begin get coeff')
+        print(total_pe.shape, total_pe)
+        print(LegendreCoeff.shape, LegendreCoeff)
         
         for cut in np.arange(5,cut_max,5):
             
@@ -204,7 +245,7 @@ def main_Calib(radius, path, fout, cut_max):
             
             H = hessian(result.x, *(total_pe, PMT_pos, cut, LegendreCoeff[:,0:cut]))
             H_I = np.linalg.pinv(np.matrix(H))
-            vs = np.reshape(total_pe[0:sizex*30],(-1,30), order='C')
+            vs = np.reshape(total_pe[0:sizex_p*30],(-1,30), order='C')
             mean = np.mean(vs, axis=0)
             args = (total_pe, PMT_pos, cut)
             predict = [];

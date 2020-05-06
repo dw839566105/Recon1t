@@ -112,7 +112,7 @@ def readfile(filename):
     return (EventID, ChannelID, PETime, photonTime, PulseTime, dETime, x, y, z)
 
 def readchain(radius, path, axis):
-    for i in np.arange(0,2):
+    for i in np.arange(0,1):
         if(i == 0):
             #filename = path + '1t_' + radius + '.h5'
             filename = '%s1t_%s_%s.h5' % (path, radius, axis)
@@ -138,47 +138,105 @@ def main_Calib(radius, path, fout, cut_max):
     #filename = '/mnt/stage/douwei/Simulation/1t_root/1.5MeV_015/1t_' + radius + '.h5' 
     with h5py.File(fout,'w') as out:
         # read files by table
-        EventIDx, ChannelIDx, PETimex, photonTimex, PulseTimex, dETimex, xx, yx, zx = readchain(radius, path, 'x')
-        EventIDy, ChannelIDy, PETimey, photonTimey, PulseTimey, dETimey, xy, yy, zy = readchain(radius, path, 'y')
-        EventIDz, ChannelIDz, PETimez, photonTimez, PulseTimez, dETimez, xz, yz, zz = readchain(radius, path, 'z')
+        EventIDx, ChannelIDx1, PETimex, photonTimex, PulseTimex, dETimex, xx, yx, zx = readchain('+' + radius, path, 'x')
+        EventIDy, ChannelIDy1, PETimey, photonTimey, PulseTimey, dETimey, xy, yy, zy = readchain('+' + radius, path, 'y')
+        EventIDz, ChannelIDz1, PETimez, photonTimez, PulseTimez, dETimez, xz, yz, zz = readchain('+' + radius, path, 'z')
 
         EventIDy = EventIDy + np.max(EventIDx)
         EventIDz = EventIDz + np.max(EventIDy)
         
+        x1 = np.array((xx[0], yx[0], xz[0]))
+        y1 = np.array((xy[0], yy[0], zy[0]))
+        z1 = np.array((xz[0], yz[0], zz[0])) 
+        
         # dark noise (np.unique EventID should not change since the pure trigger by dark noise has been filtered!)
         flight_timex = PulseTimex - dETimex        
         EventIDx = EventIDx[~(flight_timex==0)]
-        ChannelIDx = ChannelIDx[~(flight_timex==0)]
+        ChannelIDx1 = ChannelIDx1[~(flight_timex==0)]
         flight_timex = flight_timex[~(flight_timex==0)]
+        
         flight_timey = PulseTimey - dETimey       
         EventIDy = EventIDy[~(flight_timey==0)]
-        ChannelIDy = ChannelIDy[~(flight_timey==0)]
+        ChannelIDy1 = ChannelIDy1[~(flight_timey==0)]
         flight_timey = flight_timey[~(flight_timey==0)]
+        
         flight_timez = PulseTimez - dETimez        
         EventIDz = EventIDz[~(flight_timez==0)]
-        ChannelIDz = ChannelIDz[~(flight_timez==0)]
+        ChannelIDz1 = ChannelIDz1[~(flight_timez==0)]
         flight_timez = flight_timez[~(flight_timez==0)]
         
-        EventID = np.hstack((EventIDx, EventIDy, EventIDz))
-        ChannelID = np.hstack((ChannelIDx, ChannelIDy, ChannelIDz))
-        PETime = np.hstack((PETimex, PETimey, PETimez))
-        photonTime = np.hstack((photonTimex, photonTimey, photonTimez))
-        PulseTime = np.hstack((PulseTimex, PulseTimey, PulseTimez))
-        dETime = np.hstack((dETimex, dETimey, dETimez))
-        flight_time = np.hstack((flight_timex, flight_timey, flight_timez))
+        EventID1 = np.hstack((EventIDx, EventIDy, EventIDz))
+        ChannelID1 = np.hstack((ChannelIDx1, ChannelIDy1, ChannelIDz1))
+        PETime1 = np.hstack((PETimex, PETimey, PETimez))
+        photonTime1 = np.hstack((photonTimex, photonTimey, photonTimez))
+        PulseTime1 = np.hstack((PulseTimex, PulseTimey, PulseTimez))
+        dETime1 = np.hstack((dETimex, dETimey, dETimez))
+        flight_time1 = np.hstack((flight_timex, flight_timey, flight_timez))
+               
+                # read files by table
+        EventIDx, ChannelIDx2, PETimex, photonTimex, PulseTimex, dETimex, xx, yx, zx = readchain('-' + radius, path, 'x')
+        EventIDy, ChannelIDy2, PETimey, photonTimey, PulseTimey, dETimey, xy, yy, zy = readchain('-' + radius, path, 'y')
+        EventIDz, ChannelIDz2, PETimez, photonTimez, PulseTimez, dETimez, xz, yz, zz = readchain('-' + radius, path, 'z')
+
+        EventIDy = EventIDy + np.max(EventIDx)
+        EventIDz = EventIDz + np.max(EventIDy)
+        
+        x2 = np.array((xx[0], yx[0], xz[0]))
+        y2 = np.array((xy[0], yy[0], zy[0]))
+        z2 = np.array((xz[0], yz[0], zz[0])) 
+        
+        # dark noise (np.unique EventID should not change since the pure trigger by dark noise has been filtered!)
+        flight_timex = PulseTimex - dETimex        
+        EventIDx = EventIDx[~(flight_timex==0)]
+        ChannelIDx2 = ChannelIDx2[~(flight_timex==0)]
+        flight_timex = flight_timex[~(flight_timex==0)]
+        
+        flight_timey = PulseTimey - dETimey       
+        EventIDy = EventIDy[~(flight_timey==0)]
+        ChannelIDy2 = ChannelIDy2[~(flight_timey==0)]
+        flight_timey = flight_timey[~(flight_timey==0)]
+        
+        flight_timez = PulseTimez - dETimez        
+        EventIDz = EventIDz[~(flight_timez==0)]
+        ChannelIDz2 = ChannelIDz2[~(flight_timez==0)]
+        flight_timez = flight_timez[~(flight_timez==0)]
+        
+        EventID2 = np.hstack((EventIDx, EventIDy, EventIDz))
+        ChannelID2 = np.hstack((ChannelIDx2, ChannelIDy2, ChannelIDz2))
+        PETime2 = np.hstack((PETimex, PETimey, PETimez))
+        photonTime2 = np.hstack((photonTimex, photonTimey, photonTimez))
+        PulseTime2 = np.hstack((PulseTimex, PulseTimey, PulseTimez))
+        dETime2 = np.hstack((dETimex, dETimey, dETimez))
+        flight_time2 = np.hstack((flight_timex, flight_timey, flight_timez))
+               
         x = np.hstack((xx, xy, xz))
         y = np.hstack((yx, yy, yz))
         z = np.hstack((xz, yz, zz))
 
         print('begin processing legendre coeff')
         # this part for the same vertex
-        tmp_x = Legendre_coeff(PMT_pos,np.array((xx[0], xy[0], xz[0]))/1e3, cut_max)
-        tmp_x = tmp_x[ChannelIDx]
-        tmp_y = Legendre_coeff(PMT_pos,np.array((yx[0], yy[0], yz[0]))/1e3, cut_max)
-        tmp_y = tmp_y[ChannelIDy]
-        tmp_z = Legendre_coeff(PMT_pos,np.array((zx[0], zy[0], zz[0]))/1e3, cut_max)
-        tmp_z = tmp_z[ChannelIDz]     
-        LegendreCoeff = np.vstack((tmp_x, tmp_y, tmp_z))
+        tmp_x_p = Legendre_coeff(PMT_pos,x1/1e3, cut_max)
+        tmp_x_p = tmp_x_p[ChannelIDx1]
+        tmp_y_p = Legendre_coeff(PMT_pos,y1/1e3, cut_max)
+        tmp_y_p = tmp_y_p[ChannelIDy1]
+        tmp_z_p = Legendre_coeff(PMT_pos,z1/1e3, cut_max)
+        tmp_z_p = tmp_z_p[ChannelIDz1]  
+        tmp_x_n = Legendre_coeff(PMT_pos,x2/1e3, cut_max)
+        tmp_x_n = tmp_x_n[ChannelIDx2]
+        tmp_y_n = Legendre_coeff(PMT_pos,y2/1e3, cut_max)
+        tmp_y_n = tmp_y_n[ChannelIDy2]
+        tmp_z_n = Legendre_coeff(PMT_pos,z2/1e3, cut_max)
+        tmp_z_n = tmp_z_n[ChannelIDz2]
+        LegendreCoeff = np.vstack((tmp_x_p, tmp_y_p, tmp_z_p,tmp_x_n, tmp_y_n, tmp_z_n))
+
+        EventID = np.hstack((EventID1, EventID2))
+        ChannelID = np.hstack((ChannelID1, ChannelID2, ChannelIDz2))
+        PETime = np.hstack((PETime1, PETime1))
+        photonTime = np.hstack((photonTime1, photonTime2))
+        PulseTime = np.hstack((PulseTime1, PulseTime2))
+        dETime = np.hstack((dETime1, dETime2))
+        flight_time = np.hstack((flight_time1, flight_time2))
+
         print(ChannelID.shape, LegendreCoeff.shape)
         # this part for EM
         '''

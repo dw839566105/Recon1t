@@ -3,9 +3,9 @@
 E:=2.0MeV_xyz
 path:=/mnt/stage/douwei/Simulation/1t_root/$(E)/
 
-upper:=+0.65
-lower:=-0.65
-radius:=$(shell seq -f '%+.2f' $(upper) -0.01 $(lower))
+upper:=0.65
+lower:=0.01
+radius:=$(shell seq -f '%.2f' $(upper) -0.01 $(lower))
 
 save_pe:=coeff_pe_1t_$(E)
 save_time:=coeff_time_1t_$(E)
