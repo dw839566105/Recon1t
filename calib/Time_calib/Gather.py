@@ -30,14 +30,17 @@ def findfile(path, radius, order):
         data[1::2] = - data[1::2]
     return data
 
-def main(path, upperlimit, lowerlimit, order_max):
+def main(path, upperlimit, cptbd, lowerlimit, order_max):
     
-    ra = np.arange(upperlimit + 1e-5, lowerlimit, -0.01)
+    #ra = np.arange(upperlimit + 1e-5, lowerlimit, -0.01)
+    ra1 = np.arange(upperlimit + 1e-5, cptbd, -0.002)
+    ra2 = np.arange(cptbd + 1e-5, lowerlimit, -0.01)
+    ra = np.hstack((ra1,ra2))
     for order in np.arange(5, order_max, 5):
         coeff = []
         rd = []
         for radius in ra:
-            str_radius = '%.2f' % radius
+            str_radius = '%.3f' % radius
             k = findfile(path, str_radius, order)
             rd.append(np.array(radius))
             coeff = np.hstack((coeff, k))
@@ -102,6 +105,7 @@ def main(path, upperlimit, lowerlimit, order_max):
     
 path = sys.argv[1]
 upperlimit = eval(sys.argv[2])
-lowerlimit = eval(sys.argv[3])
-order_max = eval(sys.argv[4])
-main(path, upperlimit, lowerlimit, order_max)
+cptbd = eval(sys.argv[3])
+lowerlimit = eval(sys.argv[4])
+order_max = eval(sys.argv[5])
+main(path, upperlimit, cptbd, lowerlimit, order_max)

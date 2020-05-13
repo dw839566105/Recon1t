@@ -67,31 +67,33 @@ def Likelihood(vertex, *args):
     vertex[2]: theta
     vertex[3]: phi
     '''
-    coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, str_s = args 
+    coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, str_s = args
     L1 = Likelihood_PE(vertex, *(coeff_pe, PMT_pos, pe_array, cut_pe, str_s))
     L2 = Likelihood_Time(vertex, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time, str_s))
-    L = L1 + L2
-    return L
+    return L1+L2
                          
 def Likelihood_PE(vertex, *args):
     coeff, PMT_pos, event_pe, cut, str_s = args
     y = event_pe
     
-    z = abs(vertex[1])    
+    z = abs(vertex[1])
     if z > 1:
-        return np.inf
+        z = np.sign(z)-1e-6
 
     if (str_s == 'in'):
-        if(np.abs(z) > shell_in):
-            z = np.sign(z) * shell_in
+        if(np.abs(z) > shell_in - 1e-6):
+            z = np.sign(z) * shell_in - 1e-6
     elif (str_s == 'out'):
-        if(np.abs(z) < shell_out):
-            z = np.sign(z) * shell_out
+        if(np.abs(z) < shell_out + 1e-6):
+            z = np.sign(z) * shell_out + 1e-6
             
-    if z<0.001:
+    if z<1e-3:
         # assume (0,0,1)
         # cos_theta = PMT_pos[:,2] / norm(PMT_pos,axis=1)
-        cos_theta = np.ones(np.size(PMT_pos[:,2]))
+        vertex[1] = 1e-3
+        z = 1e-3
+        v = r2c(vertex[1:4])
+        cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
     else:
         v = r2c(vertex[1:4])
         cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
@@ -120,8 +122,17 @@ def Likelihood_PE(vertex, *args):
 
     k[0] = vertex[0]
     expect = np.exp(np.dot(x,k))
-    L = - np.sum(np.sum(np.log((expect**y)*np.exp(-expect))))
-
+    a1 = expect**y
+    a2 = np.exp(-expect)
+    a1[a1<1e-20] = 1e-20
+    a2[a2>1e50] = 1e50
+    L = - np.sum(np.sum(np.log(a1*a2)))
+    if(np.isnan(L)):
+        print(z, expect)
+        #print(np.exp(-expect))
+        #print(expect**y)
+        #print((expect**y)*np.exp(-expect))
+        exit()
     return L
 
 def Likelihood_Time(vertex, *args):
@@ -129,20 +140,23 @@ def Likelihood_Time(vertex, *args):
     y = time
     # fixed axis
     z = abs(vertex[1])
-    if(np.abs(z)>1):
-        return np.inf
+    if z > 1:
+        z = np.sign(z)-1e-6
 
     if (str_s == 'in'):
-        if(np.abs(z) > shell_in):
-            z = np.sign(z) * shell_in
+        if(np.abs(z) > shell_in - 1e-6):
+            z = np.sign(z) * shell_in - 1e-6
     elif (str_s == 'out'):
-        if(np.abs(z) < shell_out):
-            z = np.sign(z) * shell_out
+        if(np.abs(z) < shell_out + 1e-6):
+            z = np.sign(z) * shell_out + 1e-6
 
     if z<1e-3:
         # assume (0,0,1)
         # cos_theta = PMT_pos[:,2] / norm(PMT_pos,axis=1)
-        cos_theta = np.ones(np.size(PMT_pos[:,2]))
+        vertex[1] = 1e-3
+        z = 1e-3
+        v = r2c(vertex[1:4])
+        cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
     else:
         v = r2c(vertex[1:4])
         cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
@@ -339,15 +353,16 @@ def recon(fid, fout, *args):
         cons_sph_in = con_sph_in(con_args)
         x0 = np.hstack((x0_in[0][0], a, x0_in[0][4]))
         # result_in = minimize(Likelihood, x0, method='SLSQP',bounds=((E_min, E_max), (0, shell_in), (-np.pi/2, np.pi/2), (0, 2*np.pi), (None, None)), args = (coeff_time_in, coeff_pe_in, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, 'in'))
-        result_in = minimize(Likelihood, x0, method='SLSQP',bounds=((E_min, E_max), (1e-3, shell_in), (None, None), (None, None), (None, None)), args = (coeff_time_in, coeff_pe_in, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, 'in'))
-        
+        result_in = minimize(Likelihood, x0, method='SLSQP',bounds=((E_min, E_max), (0, shell_in+1e-6), (None, None), (None, None), (None, None)), args = (coeff_time_in, coeff_pe_in, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, 'in'))
+
         # new added avoid boundry:
+        '''
         if(shell_in - result_in.x[1] < 1e-3):
             x0 = result_in.x
-            result_bd = minimize(Likelihood, x0, method='SLSQP',bounds=((E_min, E_max), (shell_out,1), (None, None), (None, None),(None, None)), args = (coeff_time_out, coeff_pe_out, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, 'out'))
+            result_bd = minimize(Likelihood, x0, method='SLSQP',bounds=((E_min, E_max), (shell_out-1e-6,1), (None, None), (None, None),(None, None)), args = (coeff_time_out, coeff_pe_out, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, 'out'))
             if(result_bd.fun < result_in.fun):
                 result_in = result_bd
-        
+        '''
         in2 = r2c(result_in.x[1:4])*shell
         recondata['x_sph_in'] = in2[0]
         recondata['y_sph_in'] = in2[1]
@@ -366,14 +381,15 @@ def recon(fid, fout, *args):
         cons_sph_out = con_sph_out(con_args)
         x0 = np.hstack((x0_out[0][0], a, x0_out[0][4]))
         result_out = minimize(Likelihood, x0, method='SLSQP',bounds=((E_min, E_max), (shell_out,1), (None, None), (None, None),(None, None)), args = (coeff_time_out, coeff_pe_out, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, 'out'))
-
+        '''
         # new added avoid boundry:
         if(result_out.x[1] - shell_out < 1e-3):
+            print('hahahaha')
             x0 = result_out.x
-            result_bd = minimize(Likelihood, x0, method='SLSQP',bounds=((E_min, E_max), (1e-3, shell_in), (None, None), (None, None), (None, None)), args = (coeff_time_in, coeff_pe_in, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, 'in'))
+            result_bd = minimize(Likelihood, x0, method='SLSQP',bounds=((E_min, E_max), (0, shell_in), (None, None), (None, None), (None, None)), args = (coeff_time_in, coeff_pe_in, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, 'in'))
             if(result_bd.fun < result_out.fun):
                 result_out = result_bd
-                
+        '''     
         out2 = r2c(result_out.x[1:4]) * shell
         recondata['x_sph_out'] = out2[0]
         recondata['y_sph_out'] = out2[1]

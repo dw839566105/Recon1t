@@ -1,7 +1,7 @@
 .PHONY: all
 
-path:=/mnt/stage/douwei/Simulation/5kt_root/2MeV/
-save:=result_pe
+path:=/mnt/stage/douwei/Simulation/5kt_root/2MeV_015/
+save:=result_1
 sim:=$(wildcard $(path)*.root)
 dst:=$(sim:$(path)%.root=$(save)/%.h5)
 all:$(dst)

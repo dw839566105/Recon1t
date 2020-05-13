@@ -1,10 +1,10 @@
 .PHONY: all
 
 order:=10
-E:=2.0MeV
-path:=/mnt/stage/douwei/Simulation/1t_root/$(E)_015/
-save:=result_1t_$(E)
-sim:=$(wildcard $(path)*.root)
+E:=2.0MeV_015
+path:=/mnt/stage/douwei/Simulation/1t_root/$(E)/
+save:=result_1t_$(E)_10
+sim:=$(wildcard $(path)1t_?????.root)
 dst:=$(sim:$(path)%.root=$(save)/%.h5)
 all:$(dst)
 

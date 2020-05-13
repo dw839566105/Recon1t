@@ -1,12 +1,13 @@
 .PHONY: all
 
-E:=2.0MeV
-path:=/mnt/stage/douwei/Simulation/1t_root/$(E)_cpt/
-upper:=+0.65
-lower:=+0.40
-radius:=$(shell seq -f '%+.3f' $(upper) -0.002 $(lower))
-save_pe:=coeff_pe_1t_$(E)_cpt
-save_time:=coeff_time_1t_$(E)_cpt
+E:=2.0MeV_dn
+path:=/mnt/stage/douwei/Simulation/1t_root/$(E)/
+upper:=0.65
+lower:=0.40
+order:=20
+radius:=$(shell seq -f '%.3f' $(upper) -0.002 $(lower))
+save_pe:=coeff_pe_1t_$(E)
+save_time:=coeff_time_1t_$(E)
 src_pe:=$(radius:%=$(save_pe)/file_%.h5)
 src_time:=$(radius:%=$(save_time)/file_%.h5)
 
@@ -14,8 +15,8 @@ all:$(src_pe) $(src_time)
 
 $(save_pe)/file_%.h5:
 	mkdir -p $(save_pe)
-	python3 PE_calib/main_calib.py $* $(path) $@
+	python3 PE_calib/main_calib.py $* $(path) $@ $(order)
 
 $(save_time)/file_%.h5:
 	mkdir -p $(save_time)
-	python3 Time_calib/main_calib.py $* $(path) $@
+	python3 Time_calib/main_calib.py $* $(path) $@ $(order)
