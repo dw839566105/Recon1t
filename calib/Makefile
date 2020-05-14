@@ -9,7 +9,7 @@ radius_i:=$(shell seq -f '%.3f' $(upper_i) -0.01 $(lower_i))
 
 upper_o:=0.65
 lower_o:=0.40
-radius_o:=$(shell seq -f '%.3f' $(upper_o) -0.01 $(lower_o))
+radius_o:=$(shell seq -f '%.3f' $(upper_o) -0.002 $(lower_o))
 
 radius:=$(shell echo $(radius_i) $(radius_o))
 
