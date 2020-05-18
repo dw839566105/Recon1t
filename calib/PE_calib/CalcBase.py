@@ -75,8 +75,6 @@ def CalMean(axis):
     EventID, ChannelID, x, y, z = readchain('%+.3f' % ra, '/mnt/stage/douwei/Simulation/1t_root/2.0MeV_dn/', axis)
 
     size = np.size(np.unique(EventID))
-    print(size)
-    print(type(size))
     total_pe = np.zeros(np.size(PMT_pos[:,0])*size)
 
     for k_index, k in enumerate(np.unique(EventID)):

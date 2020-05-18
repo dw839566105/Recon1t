@@ -1,6 +1,6 @@
 .PHONY: all
 
-E:=2.0MeV_dn
+E:=2.0MeV_dns
 path:=/mnt/stage/douwei/Simulation/1t_root/$(E)/
 
 upper_i:=0.40

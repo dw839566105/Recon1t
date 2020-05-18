@@ -105,6 +105,8 @@ def Likelihood_PE(vertex, *args):
         c = np.zeros(cut)
         c[i] = 1
         x[:,i] = LG.legval(cos_theta,c)
+    if z < 1e-3:
+        x = np.ones((30,5))
     # legendre coeff by polynomials
     k = np.zeros(cut)
     for i in np.arange(cut):

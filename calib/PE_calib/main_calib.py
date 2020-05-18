@@ -6,6 +6,15 @@ from scipy.optimize import minimize
 from numpy.polynomial import legendre as LG
 import matplotlib.pyplot as plt
 
+def LoadBase():
+    path = './base.h5'
+    h1 = tables.open_file(path)
+    base = h1.root.correct[:]
+    h1.close()
+    return base
+
+#base = np.log(LoadBase())
+
 def Calib(theta, *args):
     total_pe, PMT_pos, cut, LegendreCoeff = args
     y = total_pe
@@ -15,13 +24,18 @@ def Calib(theta, *args):
     print(np.dot(LegendreCoeff, theta))
     print((np.dot(LegendreCoeff, theta)).shape)
     '''
+    #print(np.dot(LegendreCoeff, theta).shape)
+    #a = np.tile(base, (1, np.int(np.size(LegendreCoeff)/np.size(base)/np.size(theta))))[0,:]
+    #print(a.shape)
+    # corr = np.dot(LegendreCoeff, theta) + np.tile(base, (1, np.int(np.size(LegendreCoeff)/np.size(base)/np.size(theta))))[0,:]
+    corr = np.dot(LegendreCoeff, theta)
     # Poisson regression
-    L0 = - np.sum(np.sum(np.transpose(y)*np.transpose(np.dot(LegendreCoeff, theta)) \
-        - np.transpose(np.exp(np.dot(LegendreCoeff, theta)))))
+    L0 = - np.sum(np.sum(np.transpose(y)*np.transpose(corr) \
+        - np.transpose(np.exp(corr))))
 
     # L = L0 + np.exp(np.sum(np.abs(theta)))
     # L = L0 + 0.01*2e5*np.exp(np.sum(np.abs(theta)))
-    L = L0 + np.size(y)/30 * 0.05 * np.sum(np.abs(theta)) # standard L-0 norm
+    L = L0/(2*np.size(y)) + 0.001 * np.sum(np.abs(theta)) # standard L-0 norm
     # L = L0 * np.exp(np.sum(np.abs(theta)))
     return L
 

@@ -284,8 +284,6 @@ def main_Calib(radius, path, fout, cut_max):
             print('begin processing legendre coeff')
             # this part for the same vertex
             tmp_x_p = Legendre_coeff(PMT_pos,x1/1e3, cut_max)
-            print(tmp_x_p)
-            exit()
             tmp_x_p = tmp_x_p[ChannelIDx1]
             tmp_y_p = Legendre_coeff(PMT_pos,y1/1e3, cut_max)
             tmp_y_p = tmp_y_p[ChannelIDy1]
