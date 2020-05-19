@@ -13,7 +13,7 @@ radius_o:=$(shell seq -f '%.3f' $(upper_o) -0.002 $(lower_o))
 
 radius:=$(shell echo $(radius_i) $(radius_o))
 
-save_pe:=coeff_pe_1t_$(E)_Lasso
+save_pe:=coeff_pe_1t_$(E)_Lasso_els
 save_time:=coeff_time_1t_$(E)_Lasso
 
 src_pe:=$(radius:%=$(save_pe)/file_%.h5)

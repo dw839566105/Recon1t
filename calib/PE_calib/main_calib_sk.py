@@ -7,6 +7,8 @@ from numpy.polynomial import legendre as LG
 import matplotlib.pyplot as plt
 from sklearn import linear_model
 from sklearn.linear_model import Lasso
+from sklearn.linear_model import TweedieRegressor
+np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
 
 def LoadBase():
     path = './base.h5'
@@ -16,6 +18,20 @@ def LoadBase():
     return base
 
 #base = np.log(LoadBase())
+
+def ReadPMT():
+    # Read PMT position
+    # output: 2d PMT position 30*3 (x, y, z)
+    f = open(r"../PMT_1t.txt")
+    line = f.readline()
+    data_list = [] 
+    while line:
+        num = list(map(float,line.split()))
+        data_list.append(num)
+        line = f.readline()
+    f.close()
+    PMT_pos = np.array(data_list)
+    return PMT_pos
 
 def Calib(theta, *args):
     total_pe, PMT_pos, cut, LegendreCoeff = args
@@ -287,28 +303,27 @@ def main_Calib(radius, path, fout, cut_max):
         print(total_pe.shape, total_pe)
         print(LegendreCoeff.shape, LegendreCoeff)
         
+        vs = np.reshape(total_pe[0:sizex_p*30],(-1,30), order='C')
+        mean = np.mean(vs, axis=0)        
 
         for cut in np.arange(5,cut_max,5):
             X = LegendreCoeff[:,0:cut]
             y = total_pe
-            alpha = 0.1
-            lasso = Lasso(alpha=alpha)
-
-            reg = lasso.fit(X, y)
-            
-            print(reg.coef_)
-
+            alpha = 0.001
+            reg = TweedieRegressor(power=1, alpha=alpha, link='log')
+            reg.fit(X, y)
+            prd = reg.predict(X[0:30,0:cut])
+            print('%d-th intercept:\n' % cut, reg.intercept_,'\n')
+            print('%d-th coeff:\n' % cut, reg.coef_,'\n')
+            print('%d-th predict:\n' % cut, prd,'\n')
+            print('Mean hit:\n', mean,'\n')      
+            print('Saving file...')
+            coeff = np.hstack((reg.intercept_,reg.coef_))
+            out.create_dataset('coeff' + str(cut), data = coeff)
+            out.create_dataset('mean' + str(cut), data = mean)
+            out.create_dataset('predict' + str(cut), data = prd)
 ## read data from calib files
-f = open(r'./PMT_1t.txt')
-line = f.readline()
-data_list = []
-while line:
-    num = list(map(float,line.split()))
-    data_list.append(num)
-    line = f.readline()
-f.close()
-PMT_pos = np.array(data_list)
-
+PMT_pos = ReadPMT()
 # sys.argv[1]: '%s' radius
 # sys.argv[2]: '%s' path
 # sys.argv[3]: '%s' output
