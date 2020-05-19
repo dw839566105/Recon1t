@@ -1,5 +1,6 @@
-# Convert ROOT file to HDF5 file
-
+'''
+# Convert ROOT file to HDF5 file, For simulation files
+'''
 import numpy as np
 import ROOT
 import sys

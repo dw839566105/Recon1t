@@ -1,3 +1,7 @@
+'''
+For later analysis of real data
+'''
+
 import numpy as np
 import scipy, h5py
 import scipy.stats as stats

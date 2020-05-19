@@ -1,6 +1,9 @@
 .PHONY: all
 
-E:=2.0MeV_dns
+E:=2.0MeV_dns # no dark noise, all PMTs are the same
+# 2.0MeV_dn: no dark noise, PMTs are different
+# 2.0MeV_xyz: dark noise thereshold 1
+# 2.0MeV_20000: dark noise threshold 25
 path:=/mnt/stage/douwei/Simulation/1t_root/$(E)/
 
 upper_i:=0.40
@@ -22,7 +25,6 @@ src_time:=$(radius:%=$(save_time)/file_%.h5)
 order:=25
 
 all:coeff_pe coeff_time
-#all:$(src_pe) $(src_time)
 $(save_pe)/file_%.h5:
 	mkdir -p $(save_pe)
 	python3 PE_calib/main_calib.py $* $(path) $@ $(order) > logs/PE$*.log
