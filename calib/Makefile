@@ -1,6 +1,7 @@
 .PHONY: all
 
-E:=2.0MeV_dns # no dark noise, all PMTs are the same
+E:=2.0MeV_dns
+# 2.0MeV_dns: no dark noise, all PMTs are the same
 # 2.0MeV_dn: no dark noise, PMTs are different
 # 2.0MeV_xyz: dark noise thereshold 1
 # 2.0MeV_20000: dark noise threshold 25
