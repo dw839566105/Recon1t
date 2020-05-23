@@ -123,7 +123,7 @@ def Likelihood_PE(vertex, *args):
         c[i] = 1
         x[:,i] = LG.legval(cos_theta,c)
     if z < 1e-3:
-        x = np.ones((30,5))
+        x = np.ones((30,cut))
         
     # legendre coeff by polynomials
     k = np.zeros(cut)
@@ -180,7 +180,8 @@ def Likelihood_Time(vertex, *args):
         c = np.zeros(cut)
         c[i] = 1
         x[:,i] = LG.legval(cos_total,c)
-
+    if z < 1e-3:
+        x = np.ones((30,cut))
     # legendre coeff by polynomials
     k = np.zeros((1,cut))
     for i in np.arange(cut):
