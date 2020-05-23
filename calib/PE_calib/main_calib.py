@@ -23,6 +23,8 @@ from numpy.polynomial import legendre as LG
 import matplotlib.pyplot as plt
 from scipy.linalg import norm
 
+np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
+
 def LoadBase():
     '''
     # to vanish the PMT difference, just a easy script
@@ -41,7 +43,7 @@ def ReadPMT():
     # Read PMT position
     # output: 2d PMT position 30*3 (x, y, z)
     '''
-    f = open(r"../PMT_1t.txt")
+    f = open(r"./PMT_1t.txt")
     line = f.readline()
     data_list = [] 
     while line:
@@ -75,8 +77,8 @@ def Calib(theta, *args):
     # http://jmlr.csail.mit.edu/papers/volume17/15-021/15-021.pdf
     # the following 2 number is just a good attempt
     # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ElasticNet.html#sklearn.linear_model.ElasticNet
-    rho = 0.8
-    alpha = 0.01
+    rho = 1
+    alpha = 0.001
     L = L0/(2*np.size(y)) + alpha * rho * norm(theta,1) + 1/2* alpha * (1-rho) * norm(theta,2) # elastic net
     return L
 
@@ -187,7 +189,7 @@ def readchain(radius, path, axis):
     #        axis: 'x' or 'y' or 'z', 'str'
     # output: the gathered result EventID, ChannelID, x, y, z
     '''
-    for i in np.arange(0, 1):
+    for i in np.arange(0, 5):
         if(i == 0):
             # filename = path + '1t_' + radius + '.h5'
             # eg: /mnt/stage/douwei/Simulation/1t_root/2.0MeV_xyz/1t_+0.030.h5
@@ -373,10 +375,8 @@ def main_Calib(radius, path, fout, cut_max):
             predict = [];
             predict.append(np.exp(np.dot(LegendreCoeff[0:30,0:cut], result.x)))
             predict = np.transpose(predict)
-            print(mean)
-            print(predict)
             print('%d-th coeff:\n' % cut, record,'\n')
-            print('%d-th predict:\n' % cut, predict,'\n')
+            print('%d-th predict:\n' % cut, predict[:,0],'\n')
             print('Mean hit:\n', mean,'\n')      
             print('Saving file...')
             # chi2square             
@@ -389,12 +389,12 @@ def main_Calib(radius, path, fout, cut_max):
             #out.create_dataset('hinv' + str(cut), data = H_I)
             #out.create_dataset('chi' + str(cut), data = chi2sq)
 
-if len(sys.argv)!=4:
+if len(sys.argv)!=5:
     print("Wront arguments!")
     print("Usage: python main_calib.py 'radius' 'path' outputFileName[.h5] Max_order")
     sys.exit(1)
     
-PMT_pos = PeadPMT()
+PMT_pos = ReadPMT()
 # sys.argv[1]: '%s' radius
 # sys.argv[2]: '%s' path
 # sys.argv[3]: '%s' output

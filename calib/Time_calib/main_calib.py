@@ -112,7 +112,7 @@ def readfile(filename):
     return (EventID, ChannelID, PETime, photonTime, PulseTime, dETime, x, y, z)
 
 def readchain(radius, path, axis):
-    for i in np.arange(0,1):
+    for i in np.arange(0,5):
         if(i == 0):
             #filename = path + '1t_' + radius + '.h5'
             filename = '%s1t_%s_%s.h5' % (path, radius, axis)
