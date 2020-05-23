@@ -335,8 +335,8 @@ def recon(fid, fout, *args):
             vertex[1] = bb/0.65
             L[bi] = Likelihood(vertex, *(fired_PMT, time_array, pe_array))
         imax = np.where(L == np.max(L))
-        plt.figure()
-        plt.plot(rr/0.65, L)
+        #plt.figure()
+        #plt.plot(rr/0.65, L)
         diff = np.diff(L)
         index = (diff[1:]*diff[:-1]*(diff[1:]>diff[:-1]))<0
         seq = np.array(np.where(index==1)) + 1
@@ -346,7 +346,7 @@ def recon(fid, fout, *args):
             pass
         else:
             seq = np.hstack((seq, imax[0] - 1, imax[0] + 1))
-            plt.axvline(rr[imax[0]]/0.65)
+            #plt.axvline(rr[imax[0]]/0.65)
         
         if(np.size(seq)>1):
             result_new = []
@@ -354,13 +354,13 @@ def recon(fid, fout, *args):
             for si,ss in enumerate(seq):
                 x0 = result_ini.x.copy()
                 x0[1] = rr[ss]/0.65
-                plt.axvline(rr[ss]/0.65, color = 'green')
+                #plt.axvline(rr[ss]/0.65, color = 'green')
                 xx0.append(x0[1])
                 result_new.append(minimize(Likelihood, x0, method='SLSQP',\
                    bounds=((-10, 10), (1e-3, 1-1e-3), (None, None), (None, None), (None, None)), \
                    args = (fired_PMT, time_array, pe_array)))
 
-        plt.axvline(result_ini.x[1], color = 'red')
+        #plt.axvline(result_ini.x[1], color = 'red')
         
         recondata.append()
         print('initial')
@@ -383,7 +383,7 @@ def recon(fid, fout, *args):
         
         print('-'*80)
         event_count = event_count + 1
-        plt.savefig('test%d.png' % event_count)
+        #plt.savefig('test%d.png' % event_count)
         
     # Flush into the output file
     ReconTable.flush()
