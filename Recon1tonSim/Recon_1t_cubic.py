@@ -181,7 +181,7 @@ def Likelihood_Time(vertex, *args):
         c[i] = 1
         x[:,i] = LG.legval(cos_total,c)
     if z < 1e-3:
-        x = np.ones((30,cut))
+        x = np.ones((np.size(time),cut))
     # legendre coeff by polynomials
     k = np.zeros((1,cut))
     for i in np.arange(cut):
