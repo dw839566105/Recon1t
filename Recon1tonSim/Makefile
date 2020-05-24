@@ -11,7 +11,7 @@ all:$(dst)
 
 $(save)/%.h5:$(path)%.root
 	mkdir -p $(save)
-	python3 Recon_1t_cubic.py $^ $@ $(order) > log/$*.log
+	python3 Recon_debug.py $^ $@ $(order) > log/$*.log
 
 # Delete partial files when the processes are killed.
 .DELETE_ON_ERROR:
