@@ -1,0 +1,28 @@
+.PHONY: all
+
+E:=2.0MeV_dns
+# 2.0MeV_dns: no dark noise, all PMTs are the same
+# 2.0MeV_dn: no dark noise, PMTs are different
+# 2.0MeV_xyz: dark noise thereshold 1
+# 2.0MeV_20000: dark noise threshold 25
+path:=/mnt/stage/douwei/Simulation/1t_root/$(E)/
+
+upper_i:=0.00
+lower_i:=0.00
+radius_i:=$(shell seq -f '%.3f' $(upper_i) -0.01 $(lower_i))
+
+upper_o:=0.478
+lower_o:=0.400
+radius_o:=$(shell seq -f '%.3f' $(upper_o) -0.002 $(lower_o))
+
+radius:=$(shell echo $(radius_i) $(radius_o))
+
+save_pe:=./MCmean
+src_pe:=$(radius:%=$(save_pe)/file_%.h5)
+
+all:$(src_pe)
+$(save_pe)/file_%.h5:
+	mkdir -p $(save_pe)
+	python3 test.py $(path) $*
+
+.SECONDARY:

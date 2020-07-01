@@ -72,7 +72,7 @@ def CalMean(axis):
     data = []
     PMT_pos = ReadPMT()
     ra = -0.0001
-    EventID, ChannelID, x, y, z = readchain('%+.3f' % ra, '/mnt/stage/douwei/Simulation/1t_root/2.0MeV_dn/', axis)
+    EventID, ChannelID, x, y, z = readchain('%+.3f' % ra, '/mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/', axis)
 
     size = np.size(np.unique(EventID))
     total_pe = np.zeros(np.size(PMT_pos[:,0])*size)

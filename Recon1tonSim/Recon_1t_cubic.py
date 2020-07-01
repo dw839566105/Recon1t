@@ -16,6 +16,11 @@ from scipy.linalg import norm
 import warnings
 warnings.filterwarnings('ignore')
 
+h1 = tables.open_file("./total.h5")
+tp = h1.root.mean[:]
+bins = h1.root.vertex[:]
+h1.close()
+
 # physical constant (if need)
 Light_yield = 4285*0.88 # light yield
 Att_LS = 18 # attenuation length of LS
@@ -96,7 +101,7 @@ def Likelihood(vertex, *args):
     L1 = Likelihood_PE(vertex, *(pe_array))
     L2 = Likelihood_Time(vertex, *(fired_PMT, time_array))
     #print(vertex)
-    return L1 + L2
+    return L1
                          
 def Likelihood_PE(vertex, *args):
     event_pe = args
@@ -141,7 +146,7 @@ def Likelihood_PE(vertex, *args):
             z = 1 - 1.1e-2
         k[i] = PE_func_list[i](z)
 
-    k[0] = vertex[0]
+    k[0] = k[0] + vertex[0]
     expect = np.exp(np.dot(x,k))
     a1 = expect**y
     a2 = np.exp(-expect)
@@ -255,22 +260,44 @@ def recon(fid, fout, *args):
     class ReconData(tables.IsDescription):
         EventID = tables.Int64Col(pos=0)    # EventNo
         # inner recon
-        E_sph = tables.Float16Col(pos=1)        # Energy
-        x_sph = tables.Float16Col(pos=2)        # x position
-        y_sph = tables.Float16Col(pos=3)        # y position
-        z_sph = tables.Float16Col(pos=4)        # z position
-        t0 = tables.Float16Col(pos=5)       # time offset
-        success = tables.Int64Col(pos=6)    # recon failure   
-        Likelihood = tables.Float16Col(pos=7)
-        
+        E_sph_ini = tables.Float16Col(pos=1)        # Energy
+        x_sph_ini = tables.Float16Col(pos=2)        # x position
+        y_sph_ini = tables.Float16Col(pos=3)        # y position
+        z_sph_ini = tables.Float16Col(pos=4)        # z position
+        t0_ini = tables.Float16Col(pos=5)       # time offset
+        success_ini = tables.Int64Col(pos=6)    # recon failure   
+        Likelihood_ini = tables.Float16Col(pos=7)
+        '''
         x_truth = tables.Float16Col(pos=8)        # x position
         y_truth = tables.Float16Col(pos=9)        # y position
         z_truth = tables.Float16Col(pos=10)        # z position
         E_truth = tables.Float16Col(pos=11)        # z position
-                        
+                      
         # unfinished
         tau_d = tables.Float16Col(pos=12)    # decay time constant
-
+        '''
+        E_sph_iter = tables.Float16Col(pos=8)        # Energy
+        x_sph_iter = tables.Float16Col(pos=9)        # x position
+        y_sph_iter = tables.Float16Col(pos=10)        # y position
+        z_sph_iter = tables.Float16Col(pos=11)        # z position
+        t0_iter = tables.Float16Col(pos=12)       # time offset
+        success_iter = tables.Int64Col(pos=13)    # recon failure   
+        Likelihood_iter = tables.Float16Col(pos=14)
+        
+        E_sph_MC = tables.Float16Col(pos=15)        # Energy
+        x_sph_MC = tables.Float16Col(pos=16)        # x position
+        y_sph_MC = tables.Float16Col(pos=17)        # y position
+        z_sph_MC = tables.Float16Col(pos=18)        # z position  
+        Likelihood_MC = tables.Float16Col(pos=19)       
+        
+        E_MC = tables.Float16Col(pos=20)        # Energy
+        x_MC = tables.Float16Col(pos=21)        # x position
+        y_MC = tables.Float16Col(pos=22)        # y position
+        z_MC = tables.Float16Col(pos=23)        # z position  
+        L_MC = tables.Float16Col(pos=24)         
+        
+        
+        
     # Create the output file and the group
     h5file = tables.open_file(fout, mode="w", title="OneTonDetector",
                             filters = tables.Filters(complevel=9))
@@ -299,112 +326,115 @@ def recon(fid, fout, *args):
             except:
                 pass
         event_count = event_count + 1
-        if(event_count == 733):
-            fired_PMT = fired_PMT.astype(int)
-            # initial result
-            result_vertex = np.empty((0,5)) # reconstructed vertex
+        fired_PMT = fired_PMT.astype(int)
+        # initial result
+        result_vertex = np.empty((0,5)) # reconstructed vertex
 
-            # Constraints
-            E_min = -10
-            E_max = 10
-            tau_min = 0.01
-            tau_max = 100
-            t0_min = -300
-            t0_max = 600
+        # Constraints
+        E_min = -10
+        E_max = 10
+        tau_min = 0.01
+        tau_max = 100
+        t0_min = -300
+        t0_max = 600
 
-            # inner recon
-            # initial value
-            x0_in = np.zeros((1,5))
-            x0_in[0][0] = 0.8 + np.log(np.sum(pe_array)/60)
-            x0_in[0][4] = np.mean(time_array) - 26
+        # inner recon
+        # initial value
+        x0_in = np.zeros((1,5))
+        x0_in[0][0] = 0.8 + np.log(np.sum(pe_array)/60)
+        x0_in[0][4] = np.mean(time_array) - 26
 
-            x0_in[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)/shell
-            x0_in[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)/shell
-            x0_in[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)/shell
+        x0_in[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)/shell
+        x0_in[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)/shell
+        x0_in[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)/shell
 
-            a = c2r(x0_in[0][1:4])
-            a[0] = a[0]/shell
-            if(a[0] < 0.01):
-                a[0] = 0.01
-            # not added yet
-            x0 = np.hstack((x0_in[0][0], a, x0_in[0][4]))
-            result_ini = minimize(Likelihood, x0, method='SLSQP',bounds=((-10, 10), (1e-3, 1-1e-3), (None, None), (None, None), (None, None)), args = (fired_PMT, time_array, pe_array))
+        a = c2r(x0_in[0][1:4])
+        a[0] = a[0]/shell
+        if(a[0] < 0.01):
+            a[0] = 0.01
+        # not added yet
+        x0 = np.hstack((x0_in[0][0], a, x0_in[0][4]))
+        result_ini = minimize(Likelihood, x0, method='SLSQP',bounds=((-10, 10), (1e-3, 1-1e-3), (None, None), (None, None), (None, None)), args = (fired_PMT, time_array, pe_array))
 
-            in2 = r2c(result_ini.x[1:4])*shell
+        in2 = r2c(result_ini.x[1:4])*shell
 
-            recondata['EventID'] = event_count
-            recondata['x_sph'] = in2[0]
-            recondata['y_sph'] = in2[1]
-            recondata['z_sph'] = in2[2]
-            recondata['E_sph'] = result_ini.x[0]
-            recondata['t0'] = result_ini.x[4]       
-            recondata['success'] = result_ini.success
-            recondata['Likelihood'] = result_ini.fun                
-            recondata.append()
 
-            rr = np.arange(0.01, 0.65, 0.01)
-            L = np.zeros_like(rr)
-            for bi, bb in enumerate(rr):
-                vertex = result_ini.x.copy()
-                vertex[1] = bb/0.65
-                L[bi] = Likelihood(vertex, *(fired_PMT, time_array, pe_array))
-            imax = np.where(L == np.max(L))
-            plt.figure()
-            plt.plot(rr/0.65, L)
-            plt.savefig('test.png')
-            diff = np.diff(L)
-            index = (diff[1:]*diff[:-1]*(diff[1:]>diff[:-1]))<0
-            seq = np.array(np.where(index==1)) + 1
-            seq = seq[0]
-            print(imax)
-            if((imax[0] == 0) or (imax[0] == np.size(rr)-1)):
-                pass
-            else:
-                seq = np.hstack((seq, imax[0] - 1, imax[0] + 1))
-                #plt.axvline(rr[imax[0]]/0.65)
+        rr = np.arange(0.01, 0.65, 0.01)
+        L = np.zeros_like(rr)
+        for bi, bb in enumerate(rr):
+            vertex = result_ini.x.copy()
+            vertex[1] = bb/0.65
+            L[bi] = Likelihood(vertex, *(fired_PMT, time_array, pe_array))
+        imax = np.where(L == np.min(L))
+        diff = np.diff(L)
 
-            if(np.size(seq)>1):
-                result_new = []
-                xx0 = []
-                for si,ss in enumerate(seq):
-                    x0 = result_ini.x.copy()
-                    x0[1] = rr[ss]/0.65
-                    #plt.axvline(rr[ss]/0.65, color = 'green')
-                    xx0.append(x0[1])
-                    if(x0[1] < 0.01):
-                        x0[1] = 0.01
-                    elif(x0[1] > 0.98):
-                        x0[1] = 0.98
-                    print(x0)
-                    result_new.append(minimize(Likelihood, x0, method='SLSQP',\
-                       bounds=((-10, 10), (1e-3, 1-1e-3), (None, None), (None, None), (None, None)), \
-                       args = (fired_PMT, time_array, pe_array)))
+        x0 = result_ini.x.copy()
+        x0[1] = rr[imax[0]]/0.65
+        #plt.axvline(rr[ss]/0.65, color = 'green')
+        if(x0[1] < 0.01):
+            x0[1] = 0.01
+        elif(x0[1] > 0.99):
+            x0[1] = 0.99
+        result_new = minimize(Likelihood, x0, method='SLSQP',\
+           bounds=((-10, 10), (1e-3, 1-1e-3), (None, None), (None, None), (None, None)), \
+           args = (fired_PMT, time_array, pe_array))
+        out2 = r2c(result_new.x[1:4])*shell
+        
+        rep = np.tile(pe_array,(np.size(bins[:,0]),1))
+        real_sum = np.sum(tp, axis=1)
+        corr = (tp.T/(real_sum/np.sum(pe_array))).T        
+        L_MC = np.sum(-corr + np.log(corr)*pe_array, axis=1)
+        index = np.where(L_MC == np.max(L_MC))[0][0]
+        E_MC = (1.0 / real_sum * np.sum(pe_array))[index]
+        result_MC0 = Likelihood(np.array((np.log(E_MC/2), bins[index,0]**(1/3)/0.65,np.arccos(bins[index,1]),bins[index,2],0)), * (fired_PMT, time_array, pe_array))
+        MC1 = r2c(np.array((bins[index,0]**(1/3)/0.65,np.arccos(bins[index,1]),bins[index,2])))*shell
+        
+        #print(np.array(bins[index,0]**(1/3)/shell, np.arccos(bins[index,1]), bins[index,2]))
+        x0 = np.array((np.log(E_MC/2), bins[index,0]**(1/3)/0.65,np.arccos(bins[index,1]),bins[index,2],0))
+        result_MC = minimize(Likelihood, x0, method='SLSQP',\
+               bounds=((-10, 10), (1e-3, 1-1e-3), (None, None), (None, None), (None, None)), \
+               args = (fired_PMT, time_array, pe_array))
+        MC2 = r2c(result_MC.x[1:4])*shell
 
-            #plt.axvline(result_ini.x[1], color = 'red')
+        recondata['EventID'] = event_count
+        recondata['x_sph_ini'] = in2[0]
+        recondata['y_sph_ini'] = in2[1]
+        recondata['z_sph_ini'] = in2[2]
+        recondata['E_sph_ini'] = result_ini.x[0]
+        recondata['t0_ini'] = result_ini.x[4]       
+        recondata['success_ini'] = result_ini.success
+        recondata['Likelihood_ini'] = result_ini.fun                
+        recondata['x_sph_iter'] = out2[0]
+        recondata['y_sph_iter'] = out2[1]
+        recondata['z_sph_iter'] = out2[2]
+        recondata['E_sph_iter'] = result_new.x[0]
+        recondata['t0_iter'] = result_new.x[4]       
+        recondata['success_iter'] = result_new.success
+        recondata['Likelihood_iter'] = result_new.fun        
+        recondata['x_sph_MC'] = MC2[0]
+        recondata['y_sph_MC'] = MC2[1]
+        recondata['z_sph_MC'] = MC2[2]
+        recondata['E_sph_MC'] = result_MC.x[0]       
+        recondata['Likelihood_MC'] = result_MC.fun        
+        recondata['x_MC'] = MC1[0]
+        recondata['y_MC'] = MC1[1]
+        recondata['z_MC'] = MC1[2]
+        recondata['E_MC'] = E_MC       
+        recondata['L_MC'] = np.max(L_MC)
+        recondata.append()
 
-            recondata.append()
-            print('initial')
-            print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.3f, Likelihood: %+.2f' % (event_count, in2[0], in2[1], in2[2], norm(in2), result_ini.fun))
+        print('initial')
+        print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.3f, Likelihood: %+.2f' % (event_count, in2[0], in2[1], in2[2], norm(in2), result_ini.fun))
+        print('iter')
+        
+        print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.3f, Likelihood: %+.2f' % (event_count, out2[0], out2[1], out2[2], norm(out2), result_new.fun))
+        print('MC')
+        print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.3f, Likelihood: %+.2f' % (event_count, MC2[0], MC2[1], MC2[2], norm(MC2), result_MC.fun))
+        print('MC_raw')
+        print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.3f, Likelihood: %+.2f' % (event_count, MC1[0], MC1[1], MC1[2], norm(MC1), result_MC0))
 
-            for si,ss in enumerate(seq):
-                print('iter')
-                out2 = r2c(result_new[si].x[1:4])*shell
-                print('%d: [%+.2f, %+.2f, %+.2f] begin:%+.3f radius: %+.3f, Likelihood: %+.2f' % (event_count, out2[0], out2[1], out2[2], xx0[si]*shell, norm(out2), result_new[si].fun))
-
-                recondata['EventID'] = event_count
-                recondata['x_sph'] = out2[0]
-                recondata['y_sph'] = out2[1]
-                recondata['z_sph'] = out2[2]
-                recondata['E_sph'] = result_new[si].x[0]
-                recondata['t0'] = result_new[si].x[4]       
-                recondata['success'] = result_new[si].success
-                recondata['Likelihood'] = result_new[si].fun                
-                recondata.append()
-
-            print('-'*80)
-            #plt.savefig('test%d.png' % event_count)
-        else:
-            pass
+        print('-'*80)
+        #plt.savefig('test%d.png' % event_count)
         
     # Flush into the output file
     ReconTable.flush()

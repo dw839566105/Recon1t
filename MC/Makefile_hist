@@ -1,0 +1,6 @@
+file:=$(shell echo {1..50})
+dst:=$(file:%=hist%.h5)
+all:$(dst)
+
+hist%.h5:
+	python3 tp.py $* $@

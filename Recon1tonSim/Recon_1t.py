@@ -290,9 +290,10 @@ def recon(fid, fout, *args):
         y_truth = tables.Float16Col(pos=16)        # y position
         z_truth = tables.Float16Col(pos=17)        # z position
         E_truth = tables.Float16Col(pos=18)        # z position
-                        
         # unfinished
-        tau_d = tables.Float16Col(pos=18)    # decay time constant
+        tau_d = tables.Float16Col(pos=19)    # decay time constant
+    class TruthData(tables.IsDescription):
+        pes = tables.Int16Col(pos=20)
 
     # Create the output file and the group
     h5file = tables.open_file(fout, mode="w", title="OneTonDetector",
@@ -301,6 +302,8 @@ def recon(fid, fout, *args):
     # Create tables
     ReconTable = h5file.create_table(group, "Recon", ReconData, "Recon")
     recondata = ReconTable.row
+    TruthTable = h5file.create_table(group, "Truth", TruthData, "Truth")
+    truthdata = TruthTable.row
     # Loop for event
 
     f = uproot.open(fid)
@@ -321,6 +324,10 @@ def recon(fid, fout, *args):
                 fired_PMT = np.hstack((fired_PMT, ch*np.ones(np.size(pk))))
             except:
                 pass
+        
+        for ii in np.arange(np.size(pe_array)):
+            truthdata['pes'] = pe_array[ii]
+            truthdata.append()
 
         fired_PMT = fired_PMT.astype(int)
         # initial result

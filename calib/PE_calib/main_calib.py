@@ -19,6 +19,7 @@ import scipy, h5py
 import tables
 import sys
 from scipy.optimize import minimize
+from scipy.optimize import rosen_der
 from numpy.polynomial import legendre as LG
 import matplotlib.pyplot as plt
 from scipy.linalg import norm
@@ -189,7 +190,7 @@ def readchain(radius, path, axis):
     #        axis: 'x' or 'y' or 'z', 'str'
     # output: the gathered result EventID, ChannelID, x, y, z
     '''
-    for i in np.arange(0, 5):
+    for i in np.arange(0, 1):
         if(i == 0):
             # filename = path + '1t_' + radius + '.h5'
             # eg: /mnt/stage/douwei/Simulation/1t_root/2.0MeV_xyz/1t_+0.030.h5
@@ -362,8 +363,8 @@ def main_Calib(radius, path, fout, cut_max):
         for cut in np.arange(5,cut_max,5): # just take special values
             theta0 = np.zeros(cut) # initial value
             theta0[0] = 0.8 + np.log(2) # intercept is much more important
-            
-            result = minimize(Calib, theta0, method='SLSQP', args = (total_pe, PMT_pos, cut, LegendreCoeff[:,0:cut])) 
+            print(rosen_der)
+            result = minimize(Calib, theta0, method='Newton-CG', jac=rosen_der, hess='3-point', args = (total_pe, PMT_pos, cut, LegendreCoeff[:,0:cut])) 
             record = np.array(result.x, dtype=float)
             # hessian not tested
             # H = hessian(result.x, *(total_pe, PMT_pos, cut, LegendreCoeff[:,0:cut]))
