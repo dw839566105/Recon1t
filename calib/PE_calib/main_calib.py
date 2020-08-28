@@ -146,7 +146,10 @@ def readfile(filename):
     # input: filename [.h5]
     # output: EventID, ChannelID, x, y, z
     '''
-    h1 = tables.open_file(filename,'r')
+    try:
+        h1 = tables.open_file(filename,'r')
+    except:
+        exit()
     print(filename)
     truthtable = h1.root.GroundTruth
     EventID = truthtable[:]['EventID']
@@ -208,7 +211,7 @@ def readchain(radius, path, axis):
                 y = np.hstack((y, y1))
                 z = np.hstack((z, z1))
             except:
-                pass
+                exit()
 
     return EventID, ChannelID, x, y, z
     
@@ -236,9 +239,12 @@ def main_Calib(radius, path, fout, cut_max):
             EventIDz, ChannelIDz, xz, yz, zz = readchain('+' + radius, path, 'z')
             EventIDy = EventIDy + np.max(EventIDx)
             EventIDz = EventIDz + np.max(EventIDy)
-            x1 = np.array((xx[0], yx[0], xz[0]))
-            y1 = np.array((xy[0], yy[0], zy[0]))
-            z1 = np.array((xz[0], yz[0], zz[0]))
+            try:
+                x1 = np.array((xx[0], yx[0], xz[0]))
+                y1 = np.array((xy[0], yy[0], zy[0]))
+                z1 = np.array((xz[0], yz[0], zz[0]))
+            except:
+                exit()
             sizex_p = np.size(np.unique(EventIDx))
             sizey_p = np.size(np.unique(EventIDy))
             sizez_p = np.size(np.unique(EventIDz))

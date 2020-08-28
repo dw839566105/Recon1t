@@ -22,7 +22,7 @@ def LoadBase():
 def ReadPMT():
     # Read PMT position
     # output: 2d PMT position 30*3 (x, y, z)
-    f = open(r"../PMT_1t.txt")
+    f = open(r"./PMT_1t.txt")
     line = f.readline()
     data_list = [] 
     while line:
@@ -103,7 +103,10 @@ def hessian(x, *args):
     return H
 
 def readfile(filename):
-    h1 = tables.open_file(filename,'r')
+    try:
+        h1 = tables.open_file(filename,'r')
+    except:
+        exit()
     print(filename)
     truthtable = h1.root.GroundTruth
     EventID = truthtable[:]['EventID']
@@ -120,7 +123,10 @@ def readfile(filename):
     dn = np.where((x==0) & (y==0) & (z==0))
     dn_index = (x==0) & (y==0) & (z==0)
     #print(np.sum(dn_index))
-    pin = dn[0] + np.min(EventID)
+    try:
+        pin = dn[0] + np.min(EventID)
+    except:
+        pin = dn[0]
     if(np.sum(x**2+y**2+z**2>0.1)>0):
         cnt = 0        
         for ID in np.arange(np.min(EventID), np.max(EventID)+1):
@@ -136,11 +142,12 @@ def readfile(filename):
         x = x[~dn_index]
         y = y[~dn_index]
         z = z[~dn_index]
+
     #print(x.shape, EventID.shape, np.unique(EventID).shape,np.std(y),np.sum(x**2+y**2+z**2>0.1))
     return (EventID, ChannelID, x, y, z)
     
 def readchain(radius, path, axis):
-    for i in np.arange(0, 1):
+    for i in np.arange(0, 3):
         if(i == 0):
             #filename = path + '1t_' + radius + '.h5'
             filename = '%s1t_%s_%s.h5' % (path, radius, axis)
@@ -155,8 +162,8 @@ def readchain(radius, path, axis):
                 y = np.hstack((y, y1))
                 z = np.hstack((z, z1))
             except:
-                pass
-
+                exit()
+    #print(x, y, z)
     return EventID, ChannelID, x, y, z
     
 def main_Calib(radius, path, fout, cut_max):
@@ -171,9 +178,12 @@ def main_Calib(radius, path, fout, cut_max):
             EventIDz, ChannelIDz, xz, yz, zz = readchain('+' + radius, path, 'z')
             EventIDy = EventIDy + np.max(EventIDx)
             EventIDz = EventIDz + np.max(EventIDy)
-            x1 = np.array((xx[0], yx[0], xz[0]))
-            y1 = np.array((xy[0], yy[0], zy[0]))
-            z1 = np.array((xz[0], yz[0], zz[0]))
+            try:
+                x1 = np.array((xx[0], yx[0], xz[0]))
+                y1 = np.array((xy[0], yy[0], zy[0]))
+                z1 = np.array((xz[0], yz[0], zz[0]))
+            except:
+                exit()
             sizex_p = np.size(np.unique(EventIDx))
             sizey_p = np.size(np.unique(EventIDy))
             sizez_p = np.size(np.unique(EventIDz))
@@ -212,10 +222,10 @@ def main_Calib(radius, path, fout, cut_max):
             y = np.hstack((y_p, y_n))
             z = np.hstack((z_p, z_n))         
 
-            print(sizex_p,sizex_n,sizey_p,sizey_n,sizez_p, sizez_n)
+            #print(sizex_p,sizex_n,sizey_p,sizey_n,sizez_p, sizez_n)
 
             size = np.size(np.unique(EventID))
-            print(size)
+            #print(size)
         else:
             EventIDx, ChannelIDx, xx, yx, zx = readchain('-' + radius, path, 'x')
             EventIDy, ChannelIDy, xy, yy, zy = readchain('-' + radius, path, 'y')
@@ -279,9 +289,9 @@ def main_Calib(radius, path, fout, cut_max):
             #print(xx[0],xy[0],xz[0])
             #print(yx[0],yy[0],yz[0])
             #print(zx[0],zy[0],zz[0])
-            print(tmp_x_p.shape)
+            #print(tmp_x_p.shape)
             LegendreCoeff = np.vstack((tmp_x_p, tmp_y_p, tmp_z_p, tmp_x_n, tmp_y_n, tmp_z_n))
-            print(tmp_x_p.shape, tmp_y_p.shape, tmp_z_p.shape, tmp_x_n.shape, tmp_y_n.shape, tmp_z_n.shape)
+            #print(tmp_x_p.shape, tmp_y_p.shape, tmp_z_p.shape, tmp_x_n.shape, tmp_y_n.shape, tmp_z_n.shape)
         else:
             tmp_x_p = Legendre_coeff(PMT_pos, x1/1e3, cut_max)
             tmp_x_p = np.tile(tmp_x_p, (sizex_p,1))
@@ -306,21 +316,28 @@ def main_Calib(radius, path, fout, cut_max):
         vs = np.reshape(total_pe[0:sizex_p*30],(-1,30), order='C')
         mean = np.mean(vs, axis=0)        
 
-        for cut in np.arange(5,cut_max,5):
+        for cut in np.arange(2,cut_max,1):
             X = LegendreCoeff[:,0:cut]
             y = total_pe
             alpha = 0.001
-            reg = TweedieRegressor(power=1, alpha=alpha, link='log')
+            reg = TweedieRegressor(power=1, alpha=alpha, link='log',fit_intercept=False, max_iter=1000,tol=1e-8 )
             reg.fit(X, y)
-            prd = reg.predict(X[0:30,0:cut])
+            prd = reg.predict(X[0:30,0:cut+1])
             print('%d-th intercept:\n' % cut, reg.intercept_,'\n')
             print('%d-th coeff:\n' % cut, reg.coef_,'\n')
             print('%d-th predict:\n' % cut, prd,'\n')
-            print('Mean hit:\n', mean,'\n')      
+            print('Mean hit:\n', mean,'\n')
+            
+            corr = np.dot(LegendreCoeff[:,0:cut+1], np.hstack((reg.intercept_, reg.coef_)))
+            L0 = np.transpose(y)*np.transpose(corr) \
+                - np.transpose(np.exp(corr))
+            aic = 2*(cut) - 2*np.sum(L0)
+            print('%d-th AIC:\n' % cut, aic,'\n')
             print('Saving file...')
             coeff = np.hstack((reg.intercept_,reg.coef_))
             out.create_dataset('coeff' + str(cut), data = coeff)
             out.create_dataset('mean' + str(cut), data = mean)
+            out.create_dataset('aic' + str(cut), data = mean)
             out.create_dataset('predict' + str(cut), data = prd)
 ## read data from calib files
 PMT_pos = ReadPMT()

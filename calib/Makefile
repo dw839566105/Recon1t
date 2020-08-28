@@ -11,24 +11,25 @@ upper_i:=0.40
 lower_i:=0.00
 radius_i:=$(shell seq -f '%.3f' $(upper_i) -0.01 $(lower_i))
 
-upper_o:=0.65
+upper_o:=0.648
 lower_o:=0.40
 radius_o:=$(shell seq -f '%.3f' $(upper_o) -0.002 $(lower_o))
 
 radius:=$(shell echo $(radius_i) $(radius_o))
 
-save_pe:=coeff_pe_1t_$(E)_Lasso_els1
-save_time:=coeff_time_1t_$(E)_Lasso_1
+save_pe:=coeff_pe_1t_$(E)_1
+save_time:=coeff_time_1t_$(E)
 
 src_pe:=$(radius:%=$(save_pe)/file_%.h5)
 src_time:=$(radius:%=$(save_time)/file_%.h5)
 
 order:=25
 
-all:coeff_pe coeff_time
+all:coeff_pe
+#all:coeff_pe coeff_time
 $(save_pe)/file_%.h5:
 	mkdir -p $(save_pe)
-	python3 PE_calib/main_calib_lr.py $* $(path) $@ $(order) > logs/PE$*.log
+	python3 PE_calib/main_calib_sk.py $* $(path) $@ $(order) > logs/PE$*.log
 
 $(save_time)/file_%.h5:
 	mkdir -p $(save_time)

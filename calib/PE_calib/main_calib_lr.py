@@ -23,7 +23,8 @@ from numpy.polynomial import legendre as LG
 import matplotlib.pyplot as plt
 from scipy.linalg import norm
 from numdifftools import Jacobian, Hessian
-
+from sklearn.linear_model import Lasso
+from sklearn.linear_model import TweedieRegressor
 np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
 
 def LoadBase():
@@ -156,7 +157,10 @@ def readfile(filename):
     # input: filename [.h5]
     # output: EventID, ChannelID, x, y, z
     '''
-    h1 = tables.open_file(filename,'r')
+    try:
+        h1 = tables.open_file(filename,'r')
+    except:
+        exit()
     print(filename, flush=True)
     truthtable = h1.root.GroundTruth
     EventID = truthtable[:]['EventID']
@@ -218,7 +222,7 @@ def readchain(radius, path, axis):
                 y = np.hstack((y, y1))
                 z = np.hstack((z, z1))
             except:
-                pass
+                exit()
 
     return EventID, ChannelID, x, y, z
     
@@ -246,35 +250,34 @@ def main_Calib(radius, path, fout, cut_max):
             EventIDz, ChannelIDz, xz, yz, zz = readchain('+' + radius, path, 'z')
             EventIDy = EventIDy + np.max(EventIDx)
             EventIDz = EventIDz + np.max(EventIDy)
-            x1 = np.array((xx[0], yx[0], zx[0]))
-            y1 = np.array((xy[0], yy[0], zy[0]))
-            z1 = np.array((xz[0], yz[0], zz[0]))
-            sizex_p = np.size(np.unique(EventIDx))
-            sizey_p = np.size(np.unique(EventIDy))
-            sizez_p = np.size(np.unique(EventIDz))
-
-            EventID_p = np.hstack((EventIDx, EventIDy, EventIDz))
-            ChannelID_p = np.hstack((ChannelIDx, ChannelIDy, ChannelIDz))
-            x_p = np.hstack((xx, xy, xz))
-            y_p = np.hstack((yx, yy, yz))
-            z_p = np.hstack((zx, zy, zz))
-
-            # negative direction
-            EventIDx, ChannelIDx, xx, yx, zx = readchain('-' + radius, path, 'x')
-            EventIDy, ChannelIDy, xy, yy, zy = readchain('-' + radius, path, 'y')
-            EventIDz, ChannelIDz, xz, yz, zz = readchain('-' + radius, path, 'z')
-            EventIDy = EventIDy + np.max(EventIDx)
-            EventIDz = EventIDz + np.max(EventIDy)
-            x2 = np.array((xx[0], yx[0], xz[0]))
-            y2 = np.array((xy[0], yy[0], zy[0]))
-            z2 = np.array((xz[0], yz[0], zz[0]))
-
-            EventID_n = np.hstack((EventIDx, EventIDy, EventIDz)) + np.max(EventID_p)
-            ChannelID_n = np.hstack((ChannelIDx, ChannelIDy, ChannelIDz))
-            x_n = np.hstack((xx, xy, xz))
-            y_n = np.hstack((yx, yy, yz))
-            z_n = np.hstack((zx, zy, zz))
-
+            try:
+                x1 = np.array((xx[0], yx[0], zx[0]))
+                y1 = np.array((xy[0], yy[0], zy[0]))
+                z1 = np.array((xz[0], yz[0], zz[0]))
+                sizex_p = np.size(np.unique(EventIDx))
+                sizey_p = np.size(np.unique(EventIDy))
+                sizez_p = np.size(np.unique(EventIDz))
+                EventID_p = np.hstack((EventIDx, EventIDy, EventIDz))
+                ChannelID_p = np.hstack((ChannelIDx, ChannelIDy, ChannelIDz))
+                x_p = np.hstack((xx, xy, xz))
+                y_p = np.hstack((yx, yy, yz))
+                z_p = np.hstack((zx, zy, zz))
+                # negative direction
+                EventIDx, ChannelIDx, xx, yx, zx = readchain('-' + radius, path, 'x')
+                EventIDy, ChannelIDy, xy, yy, zy = readchain('-' + radius, path, 'y')
+                EventIDz, ChannelIDz, xz, yz, zz = readchain('-' + radius, path, 'z')
+                EventIDy = EventIDy + np.max(EventIDx)
+                EventIDz = EventIDz + np.max(EventIDy)
+                x2 = np.array((xx[0], yx[0], xz[0]))
+                y2 = np.array((xy[0], yy[0], zy[0]))
+                z2 = np.array((xz[0], yz[0], zz[0]))
+                EventID_n = np.hstack((EventIDx, EventIDy, EventIDz)) + np.max(EventID_p)
+                ChannelID_n = np.hstack((ChannelIDx, ChannelIDy, ChannelIDz))
+                x_n = np.hstack((xx, xy, xz))
+                y_n = np.hstack((yx, yy, yz))
+                z_n = np.hstack((zx, zy, zz))
+            except:
+                exit()
             # written total_pe into a column
             sizex_n = np.size(np.unique(EventIDx))
             sizey_n = np.size(np.unique(EventIDy))
