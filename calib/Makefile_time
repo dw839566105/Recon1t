@@ -1,0 +1,26 @@
+.PHONY: all
+
+E:=shell_200000
+# 2.0MeV_dns: no dark noise, all PMTs are the same
+# 2.0MeV_dn: no dark noise, PMTs are different
+# 2.0MeV_xyz: dark noise thereshold 1
+# 2.0MeV_20000: dark noise threshold 25
+path:=/mnt/stage/douwei/Simulation/1t_root/$(E)/
+
+upper:=0.65
+lower:=0.00
+radius:=$(shell seq -f '%+.3f' $(upper) -0.01 $(lower))
+
+save_time:=coeff_time_1t_$(E)
+
+src_time:=$(radius:%=$(save_time)/file_%.h5)
+
+order:=11
+
+all: $(src_time)
+
+$(save_time)/file_%.h5:
+	mkdir -p $(save_time)
+	python3 Time_calib/main_calib_shell.py $* $(path) $@ $(order) > logs/Time$*.log
+
+.SECONDARY:
