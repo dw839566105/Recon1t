@@ -1,0 +1,462 @@
+# recon range: [-1,1], need * detector radius
+
+import numpy as np
+import scipy, h5py
+import scipy.stats as stats
+import os,sys
+import tables
+import scipy.io as scio
+import matplotlib.pyplot as plt
+import uproot, argparse
+from scipy.optimize import minimize
+from scipy import interpolate
+from numpy.polynomial import legendre as LG
+from scipy import special
+from scipy.linalg import norm
+import warnings
+warnings.filterwarnings('ignore')
+
+h1 = tables.open_file("./total.h5")
+tp = h1.root.mean[:]
+bins = h1.root.vertex[:]
+h1.close()
+
+# physical constant (if need)
+Light_yield = 4285*0.88 # light yield
+Att_LS = 18 # attenuation length of LS
+Att_Wtr = 300 # attenuation length of water
+tau_r = 1.6 # fast time constant
+TTS = 5.5/2.355
+QE = 0.20
+PMT_radius = 0.254
+c = 2.99792e8
+n = 1.48
+
+# boundaries
+shell_in = 0.85 # Acrylic
+shell_out = 0.8
+shell = 0.65
+
+def findfile(path, radius, order):
+    data = []
+    filename = path + 'file_' + radius + '.h5'
+    h = tables.open_file(filename,'r')    
+    coeff = 'coeff' + str(order)    
+    data = eval('np.array(h.root.'+ coeff + '[:])')
+    h.close()
+    return data
+
+def load_spline(path='../calib/coeff_pe_1t_2.0MeV_dns_Lasso_els5/', upperlimit=0.65, cptbd=0.4, lowerlimit=0, order=15):
+    ra1 = np.arange(upperlimit + 1e-5, cptbd, -0.002)
+    ra2 = np.arange(cptbd + 1e-5, lowerlimit, -0.01)
+    ra = np.hstack((ra1,ra2))
+    
+    coeff = np.zeros((order, np.size(ra)))
+    for r_index, radius in enumerate(ra):
+        str_radius = '%.3f' % radius
+        k = findfile(path, str_radius, order)
+        coeff[:,r_index] = k
+    return ra, coeff
+
+def fun_cubic(radius, coeff):
+    func_list = []
+    for i in np.arange(np.size(coeff[:,0])):
+        # cubic interp
+        xx = radius
+        yy = coeff[i]
+        if (np.min(xx)>0.01):
+            yy = np.hstack((coeff[i,xx == np.min(xx)], coeff[i]))
+            xx = np.hstack((0,radius))
+        f = interpolate.interp1d(xx, yy, kind='cubic')
+        func_list.append(f)
+    return func_list
+
+def r2c(c):
+    v = np.zeros(3)
+    v[2] = c[0] * np.cos(c[1]) #z
+    rho = c[0] * np.sin(c[1])
+    v[0] = rho * np.cos(c[2]) #x
+    v[1] = rho * np.sin(c[2]) #y
+    return v
+
+def c2r(c):
+    v = np.zeros(3)
+    v[0] = norm(c)
+    v[1] = np.arccos(c[2]/(v[0]+1e-6))
+    v[2] = np.arctan(c[1]/(c[0]+1e-6)) + (c[0]<0)*np.pi
+    return v
+
+def Likelihood(vertex, *args):
+    '''
+    vertex[1]: r
+    vertex[2]: theta
+    vertex[3]: phi
+    '''
+    if (np.abs(vertex[1]) <= 1.1e-2):
+        vertex[1] = 1.1e-2
+    elif(np.abs(vertex[1]) >= 0.99):
+        vertex[1] = 1 - 1.1e-2
+        
+    fired_PMT, time_array, pe_array = args
+    L1 = Likelihood_PE(vertex, *(pe_array))
+    L2 = Likelihood_Time(vertex, *(fired_PMT, time_array))
+    #print(vertex)
+    return L1
+                         
+def Likelihood_PE(vertex, *args):
+    event_pe = args
+    y = event_pe    
+    z = abs(vertex[1])
+    
+    if z >= 0.99:
+        z = np.sign(z)-1.1e-2
+            
+    if z<-1.1e-2:
+        vertex[2] = vertex[2] + np.pi
+        vertex[3] = vertex[3] + np.pi
+        v = r2c(vertex[1:4])
+        cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
+    elif(np.abs(z) <= 1.1e-2):
+        z = 1.1e-2
+        # assume (0,0,1)
+        cos_theta = PMT_pos[:,2] / norm(PMT_pos,axis=1)
+    else:
+        v = r2c(vertex[1:4])
+        cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
+    
+    size = np.size(PMT_pos[:,0])
+    cut = np.size(PE_coeff[:,0])
+    
+    
+    x = np.zeros((size, cut))
+    # legendre theta of PMTs
+    for i in np.arange(0,cut):
+        c = np.zeros(cut)
+        c[i] = 1
+        x[:,i] = LG.legval(cos_theta,c)
+    if np.abs(z) <= 1.1e-2:
+        z = 1.1e-2
+        x = np.ones((size,cut))
+        
+    # legendre coeff by polynomials
+    k = np.zeros(cut)
+    for i in np.arange(cut):
+        # cubic interp
+        if(np.abs(z) >= 0.99):
+            z = 1 - 1.1e-2
+        k[i] = PE_func_list[i](z)
+
+    k[0] = k[0] + vertex[0]
+    expect = np.exp(np.dot(x,k))
+    a1 = expect**y
+    a2 = np.exp(-expect)
+    a1[a1<1e-20] = 1e-20
+    a2[a2>1e50] = 1e50
+    L = - np.sum(np.sum(np.log(a1*a2)))
+    if(np.isnan(L)):
+        print(z, expect)
+        exit()
+    return L
+
+def Likelihood_Time(vertex, *args):
+    fired, time = args
+    y = time
+    # fixed axis
+    z = abs(vertex[1])
+    if z >= 0.99:
+        z = np.sign(z) - 1.1e-2
+        
+    if z<=-1.1e-3:
+        vertex[2] = vertex[2] + np.pi
+        vertex[3] = vertex[3] + np.pi
+        v = r2c(vertex[1:4])
+        cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
+    elif(np.abs(z) <= 1.1e-2):
+        # assume (0,0,1)
+        z = 1.1e-3
+        cos_theta = PMT_pos[:,2] / norm(PMT_pos,axis=1)
+    else:
+        v = r2c(vertex[1:4])
+        cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
+    
+    # accurancy and nan value
+    cos_theta = np.nan_to_num(cos_theta)
+    cos_theta[cos_theta>1] = 1
+    cos_theta[cos_theta<-1] =-1
+
+    cos_total = cos_theta[fired]
+    
+    size = np.size(cos_total)
+    cut = np.size(Time_coeff[:,0])
+    x = np.zeros((size, cut))
+    # legendre theta of PMTs
+    for i in np.arange(0,cut):
+        c = np.zeros(cut)
+        c[i] = 1
+        x[:,i] = LG.legval(cos_total,c)
+    if z <= 1.1e-2:
+        z = 1.1e-2
+        x = np.ones((np.size(time),cut))
+    # legendre coeff by polynomials
+    k = np.zeros((1,cut))
+    for i in np.arange(cut):
+        # cubic interp
+        if(np.abs(z)>=0.99):
+            z = 1-1.1e-2
+        k[0,i] = Time_func_list[i](z)
+    k[0,0] = vertex[4]
+    T_i = np.dot(x, np.transpose(k))
+    #L = Likelihood_quantile(y, T_i[:,0], 0.1, 0.3)
+    L = - np.nansum(TimeProfile(y, T_i[:,0]))
+    return L
+
+def Likelihood_quantile(y, T_i, tau, ts):
+    less = T_i[y<T_i] - y[y<T_i]
+    more = y[y>=T_i] - T_i[y>=T_i]
+
+    R = (1-tau)*np.sum(less) + tau*np.sum(more)
+    #log_Likelihood = exp
+    return R
+
+def TimeProfile(y,T_i):
+    time_correct = y - T_i
+    time_correct[time_correct<=-4] = -4
+    p_time = TimeUncertainty(time_correct, 26)
+    return p_time
+
+def TimeUncertainty(tc, tau_d):
+    TTS = 2.2
+    tau_r = 1.6
+    a1 = np.exp(((TTS**2 - tc*tau_d)**2-tc**2*tau_d**2)/(2*TTS**2*tau_d**2))
+    a2 = np.exp(((TTS**2*(tau_d+tau_r) - tc*tau_d*tau_r)**2 - tc**2*tau_d**2*tau_r**2)/(2*TTS**2*tau_d**2*tau_r**2))
+    a3 = np.exp(((TTS**2 - tc*tau_d)**2 - tc**2*tau_d**2)/(2*TTS**2*tau_d**2))*special.erf((tc*tau_d-TTS**2)/(np.sqrt(2)*tau_d*TTS))
+    a4 = np.exp(((TTS**2*(tau_d+tau_r) - tc*tau_d*tau_r)**2 - tc**2*tau_d**2*tau_r**2)/(2*TTS**2*tau_d**2*tau_r**2))*special.erf((tc*tau_d*tau_r-TTS**2*(tau_d+tau_r))/(np.sqrt(2)*tau_d*tau_r*TTS))
+    p_time = np.log(tau_d + tau_r) - 2*np.log(tau_d) + np.log(a1-a2+a3-a4)
+    return p_time
+
+def ReadPMT():
+    f = open(r"./PMT_1t.txt")
+    line = f.readline()
+    data_list = [] 
+    while line:
+        num = list(map(float,line.split()))
+        data_list.append(num)
+        line = f.readline()
+    f.close()
+    PMT_pos = np.array(data_list)
+    return PMT_pos
+
+def recon(fid, fout, *args):
+    PMT_pos, event_count = args
+    # global event_count,shell,PE,time_array,PMT_pos, fired_PMT
+    '''
+    reconstruction
+
+    fid: root reference file convert to .h5
+    fout: output file
+    '''
+    # Create the output file and the group
+    print(fid) # filename
+    class ReconData(tables.IsDescription):
+        EventID = tables.Int64Col(pos=0)    # EventNo
+        # inner recon
+        E_sph_ini = tables.Float16Col(pos=1)        # Energy
+        x_sph_ini = tables.Float16Col(pos=2)        # x position
+        y_sph_ini = tables.Float16Col(pos=3)        # y position
+        z_sph_ini = tables.Float16Col(pos=4)        # z position
+        t0_ini = tables.Float16Col(pos=5)       # time offset
+        success_ini = tables.Int64Col(pos=6)    # recon failure   
+        Likelihood_ini = tables.Float16Col(pos=7)
+        '''
+        x_truth = tables.Float16Col(pos=8)        # x position
+        y_truth = tables.Float16Col(pos=9)        # y position
+        z_truth = tables.Float16Col(pos=10)        # z position
+        E_truth = tables.Float16Col(pos=11)        # z position
+                      
+        # unfinished
+        tau_d = tables.Float16Col(pos=12)    # decay time constant
+        '''
+        E_sph_iter = tables.Float16Col(pos=8)        # Energy
+        x_sph_iter = tables.Float16Col(pos=9)        # x position
+        y_sph_iter = tables.Float16Col(pos=10)        # y position
+        z_sph_iter = tables.Float16Col(pos=11)        # z position
+        t0_iter = tables.Float16Col(pos=12)       # time offset
+        success_iter = tables.Int64Col(pos=13)    # recon failure   
+        Likelihood_iter = tables.Float16Col(pos=14)
+        
+        E_sph_MC = tables.Float16Col(pos=15)        # Energy
+        x_sph_MC = tables.Float16Col(pos=16)        # x position
+        y_sph_MC = tables.Float16Col(pos=17)        # y position
+        z_sph_MC = tables.Float16Col(pos=18)        # z position  
+        Likelihood_MC = tables.Float16Col(pos=19)       
+        
+        E_MC = tables.Float16Col(pos=20)        # Energy
+        x_MC = tables.Float16Col(pos=21)        # x position
+        y_MC = tables.Float16Col(pos=22)        # y position
+        z_MC = tables.Float16Col(pos=23)        # z position  
+        L_MC = tables.Float16Col(pos=24)         
+        
+        
+        
+    # Create the output file and the group
+    h5file = tables.open_file(fout, mode="w", title="OneTonDetector",
+                            filters = tables.Filters(complevel=9))
+    group = "/"
+    # Create tables
+    ReconTable = h5file.create_table(group, "Recon", ReconData, "Recon")
+    recondata = ReconTable.row
+    # Loop for event
+
+    f = uproot.open(fid)
+    a = f['SimTriggerInfo']
+    for chl, Pkl, xt, yt, zt, Et in zip(a.array("PEList.PMTId"),
+                    a.array("PEList.HitPosInWindow"),
+                    a.array("truthList.x"),
+                    a.array("truthList.y"),
+                    a.array("truthList.z"),
+                    a.array("truthList.EkMerged")):
+        pe_array = np.zeros(np.size(PMT_pos[:,1])) # Photons on each PMT (PMT size * 1 vector)
+        fired_PMT = np.zeros(0)     # Hit PMT (PMT Seq can be repeated)
+        time_array = np.zeros(0, dtype=int)    # Time info (Hit number)
+        for ch, pk in zip(chl, Pkl):
+            try:
+                pe_array[ch] = pe_array[ch]+1
+                time_array = np.hstack((time_array, pk))
+                fired_PMT = np.hstack((fired_PMT, ch*np.ones(np.size(pk))))
+            except:
+                pass
+        event_count = event_count + 1
+        fired_PMT = fired_PMT.astype(int)
+        # initial result
+        result_vertex = np.empty((0,5)) # reconstructed vertex
+
+        # Constraints
+        E_min = -10
+        E_max = 10
+        tau_min = 0.01
+        tau_max = 100
+        t0_min = -300
+        t0_max = 600
+
+        # inner recon
+        # initial value
+        x0_in = np.zeros((1,5))
+        x0_in[0][0] = 0.8 + np.log(np.sum(pe_array)/60)
+        x0_in[0][4] = np.mean(time_array) - 26
+
+        x0_in[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)/shell
+        x0_in[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)/shell
+        x0_in[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)/shell
+
+        a = c2r(x0_in[0][1:4])
+        a[0] = a[0]/shell
+        if(a[0] < 0.01):
+            a[0] = 0.01
+        # not added yet
+        x0 = np.hstack((x0_in[0][0], a, x0_in[0][4]))
+        result_ini = minimize(Likelihood, x0, method='SLSQP',bounds=((-10, 10), (1e-3, 1-1e-3), (None, None), (None, None), (None, None)), args = (fired_PMT, time_array, pe_array))
+
+        in2 = r2c(result_ini.x[1:4])*shell
+
+
+        rr = np.arange(0.01, 0.65, 0.01)
+        L = np.zeros_like(rr)
+        for bi, bb in enumerate(rr):
+            vertex = result_ini.x.copy()
+            vertex[1] = bb/0.65
+            L[bi] = Likelihood(vertex, *(fired_PMT, time_array, pe_array))
+        imax = np.where(L == np.min(L))
+        diff = np.diff(L)
+
+        x0 = result_ini.x.copy()
+        x0[1] = rr[imax[0]]/0.65
+        #plt.axvline(rr[ss]/0.65, color = 'green')
+        if(x0[1] < 0.01):
+            x0[1] = 0.01
+        elif(x0[1] > 0.99):
+            x0[1] = 0.99
+        result_new = minimize(Likelihood, x0, method='SLSQP',\
+           bounds=((-10, 10), (1e-3, 1-1e-3), (None, None), (None, None), (None, None)), \
+           args = (fired_PMT, time_array, pe_array))
+        out2 = r2c(result_new.x[1:4])*shell
+        
+        rep = np.tile(pe_array,(np.size(bins[:,0]),1))
+        real_sum = np.sum(tp, axis=1)
+        corr = (tp.T/(real_sum/np.sum(pe_array))).T        
+        L_MC = np.sum(-corr + np.log(corr)*pe_array, axis=1)
+        index = np.where(L_MC == np.max(L_MC))[0][0]
+        E_MC = (1.0 / real_sum * np.sum(pe_array))[index]
+        result_MC0 = Likelihood(np.array((np.log(E_MC/2), bins[index,0]**(1/3)/0.65,np.arccos(bins[index,1]),bins[index,2],0)), * (fired_PMT, time_array, pe_array))
+        MC1 = r2c(np.array((bins[index,0]**(1/3)/0.65,np.arccos(bins[index,1]),bins[index,2])))*shell
+        
+        #print(np.array(bins[index,0]**(1/3)/shell, np.arccos(bins[index,1]), bins[index,2]))
+        x0 = np.array((np.log(E_MC/2), bins[index,0]**(1/3)/0.65,np.arccos(bins[index,1]),bins[index,2],0))
+        result_MC = minimize(Likelihood, x0, method='SLSQP',\
+               bounds=((-10, 10), (1e-3, 1-1e-3), (None, None), (None, None), (None, None)), \
+               args = (fired_PMT, time_array, pe_array))
+        MC2 = r2c(result_MC.x[1:4])*shell
+
+        recondata['EventID'] = event_count
+        recondata['x_sph_ini'] = in2[0]
+        recondata['y_sph_ini'] = in2[1]
+        recondata['z_sph_ini'] = in2[2]
+        recondata['E_sph_ini'] = result_ini.x[0]
+        recondata['t0_ini'] = result_ini.x[4]       
+        recondata['success_ini'] = result_ini.success
+        recondata['Likelihood_ini'] = result_ini.fun                
+        recondata['x_sph_iter'] = out2[0]
+        recondata['y_sph_iter'] = out2[1]
+        recondata['z_sph_iter'] = out2[2]
+        recondata['E_sph_iter'] = result_new.x[0]
+        recondata['t0_iter'] = result_new.x[4]       
+        recondata['success_iter'] = result_new.success
+        recondata['Likelihood_iter'] = result_new.fun        
+        recondata['x_sph_MC'] = MC2[0]
+        recondata['y_sph_MC'] = MC2[1]
+        recondata['z_sph_MC'] = MC2[2]
+        recondata['E_sph_MC'] = result_MC.x[0]       
+        recondata['Likelihood_MC'] = result_MC.fun        
+        recondata['x_MC'] = MC1[0]
+        recondata['y_MC'] = MC1[1]
+        recondata['z_MC'] = MC1[2]
+        recondata['E_MC'] = E_MC       
+        recondata['L_MC'] = np.max(L_MC)
+        recondata.append()
+
+        print('initial')
+        print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.3f, Likelihood: %+.2f' % (event_count, in2[0], in2[1], in2[2], norm(in2), result_ini.fun))
+        print('iter')
+        
+        print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.3f, Likelihood: %+.2f' % (event_count, out2[0], out2[1], out2[2], norm(out2), result_new.fun))
+        print('MC')
+        print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.3f, Likelihood: %+.2f' % (event_count, MC2[0], MC2[1], MC2[2], norm(MC2), result_MC.fun))
+        print('MC_raw')
+        print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.3f, Likelihood: %+.2f' % (event_count, MC1[0], MC1[1], MC1[2], norm(MC1), result_MC0))
+
+        print('-'*80)
+        #plt.savefig('test%d.png' % event_count)
+        
+    # Flush into the output file
+    ReconTable.flush()
+    h5file.close()
+
+# Automatically add multiple root files created a program with max tree size limitation.
+
+if len(sys.argv)!=4:
+    print("Wront arguments!")
+    print("Usage: python Recon.py MCFileName[.root] outputFileName[.h5] order")
+    sys.exit(1)
+
+# Read PMT position
+PMT_pos = ReadPMT()
+event_count = 0
+# Reconstruction
+fid = sys.argv[1] # input file .h5
+fout = sys.argv[2] # output file .h5
+
+PE_radius, PE_coeff = load_spline(order = eval(sys.argv[3]))
+Time_radius, Time_coeff = load_spline(path='../calib/coeff_time_1t_2.0MeV_dns_Lasso/', lowerlimit = 0.01, order = 5)
+PE_func_list = fun_cubic(PE_radius/0.65, PE_coeff)
+Time_func_list = fun_cubic(Time_radius/0.65, Time_coeff)
+args = PMT_pos, event_count
+recon(fid, fout, *args)

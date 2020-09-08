@@ -26,45 +26,23 @@ QE = 0.20
 PMT_radius = 0.254
 c = 2.99792e8
 n = 1.48
-
+bd = 0.88
 # boundaries
-shell_in = 0.85 # Acrylic
-shell_out = 0.8
 shell = 0.65
 
-def findfile(path, radius, order):
-    data = []
-    filename = path + 'file_' + radius + '.h5'
-    h = tables.open_file(filename,'r')    
-    coeff = 'coeff' + str(order)    
-    data = eval('np.array(h.root.'+ coeff + '[:])')
+def load_coeff():
+    h = tables.open_file('../calib/PE_coeff_1t.h5','r')
+    coeff_pe_in = h.root.coeff_L_in[:]
+    coeff_pe_out = h.root.coeff_L_out[:]
     h.close()
-    return data
+    cut_pe, fitcut_pe = coeff_pe_in.shape
 
-def load_spline(path='../calib/coeff_pe_1t_2.0MeV_dns_Lasso_els5/', upperlimit=0.65, cptbd=0.4, lowerlimit=0, order=15):
-    ra1 = np.arange(upperlimit + 1e-5, cptbd, -0.002)
-    ra2 = np.arange(cptbd + 1e-5, lowerlimit, -0.01)
-    ra = np.hstack((ra1,ra2))
-    
-    coeff = np.zeros((order, np.size(ra)))
-    for r_index, radius in enumerate(ra):
-        str_radius = '%.3f' % radius
-        k = findfile(path, str_radius, order)
-        coeff[:,r_index] = k
-    return ra, coeff
-
-def fun_cubic(radius, coeff):
-    func_list = []
-    for i in np.arange(np.size(coeff[:,0])):
-        # cubic interp
-        xx = radius
-        yy = coeff[i]
-        if (np.min(xx)>0.01):
-            yy = np.hstack((coeff[i,xx == np.min(xx)], coeff[i]))
-            xx = np.hstack((0,radius))
-        f = interpolate.interp1d(xx, yy, kind='cubic')
-        func_list.append(f)
-    return func_list
+    h = tables.open_file('../calib/Time_coeff_1t.h5','r')
+    coeff_time_in = h.root.poly_in[:]
+    coeff_time_out = h.root.poly_out[:]
+    h.close()
+    cut_time, fitcut_time = coeff_time_in.shape
+    return coeff_pe_in, coeff_pe_out, coeff_time_in, coeff_time_out, cut_pe, fitcut_pe, cut_time, fitcut_time
 
 def r2c(c):
     v = np.zeros(3)
@@ -87,60 +65,57 @@ def Likelihood(vertex, *args):
     vertex[2]: theta
     vertex[3]: phi
     '''
-    if (np.abs(vertex[1]) <= 1.1e-2):
-        vertex[1] = 1.1e-2
-    elif(np.abs(vertex[1]) >= 0.99):
-        vertex[1] = 1 - 1.1e-2
-        
-    fired_PMT, time_array, pe_array = args
-    L1 = Likelihood_PE(vertex, *(pe_array))
-    L2 = Likelihood_Time(vertex, *(fired_PMT, time_array))
-    #print(vertex)
-    return L1 + L2
+    coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe = args
+    L1 = Likelihood_PE(vertex, *(coeff_pe, PMT_pos, pe_array, cut_pe))
+    #L2 = Likelihood_Time(vertex, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time, 'in'))
+    return L1
                          
 def Likelihood_PE(vertex, *args):
-    event_pe = args
-    y = event_pe    
-    z = abs(vertex[1])
+    coeff, PMT_pos, event_pe, cut = args
+    y = event_pe
     
-    if z >= 0.99:
-        z = np.sign(z)-1.1e-2
+    z = abs(vertex[1])
+    if z > 1-1e-3:
+        z = np.sign(z)-1e-3
             
-    if z<-1.1e-2:
-        vertex[2] = vertex[2] + np.pi
-        vertex[3] = vertex[3] + np.pi
+    if z<1e-3:
+        # assume (0,0,1)
+        # cos_theta = PMT_pos[:,2] / norm(PMT_pos,axis=1)
+        vertex[1] = 1e-3
+        z = 1e-3
         v = r2c(vertex[1:4])
         cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
-    elif(np.abs(z) <= 1.1e-2):
-        z = 1.1e-2
-        # assume (0,0,1)
-        cos_theta = PMT_pos[:,2] / norm(PMT_pos,axis=1)
     else:
         v = r2c(vertex[1:4])
         cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
     
     size = np.size(PMT_pos[:,0])
-    cut = np.size(PE_coeff[:,0])
-    
-    
     x = np.zeros((size, cut))
     # legendre theta of PMTs
     for i in np.arange(0,cut):
         c = np.zeros(cut)
         c[i] = 1
         x[:,i] = LG.legval(cos_theta,c)
-    if np.abs(z) <= 1.1e-2:
-        z = 1.1e-2
-        x = np.ones((size,cut))
+    if z < 1e-3:
+        x = np.ones((30,cut))
         
     # legendre coeff by polynomials
     k = np.zeros(cut)
+    '''
     for i in np.arange(cut):
-        # cubic interp
-        if(np.abs(z) >= 0.99):
-            z = 1 - 1.1e-2
-        k[i] = PE_func_list[i](z)
-
+        if(z>=0.9):
+            k[i] = LG.legval(z, coeff_pe_out[i])
+        else:
+            k[i] = LG.legval(z, coeff_pe_in[i])
+    print(k)
+    print(z,LG.legval(z, coeff_pe_in.T))
+    exit()
+    '''
+    if(z>=bd):
+        k = LG.legval(z, coeff_pe_out.T)
+    else:
+        k = LG.legval(z, coeff_pe_in.T)
+    
     k[0] = vertex[0]
     expect = np.exp(np.dot(x,k))
     a1 = expect**y
@@ -148,32 +123,38 @@ def Likelihood_PE(vertex, *args):
     a1[a1<1e-20] = 1e-20
     a2[a2>1e50] = 1e50
     L = - np.sum(np.sum(np.log(a1*a2)))
-    if(np.isnan(L)):
-        print(z, expect)
+    
+    if(L>1e20 or np.isnan(L)):
+        L = 1e20
+
+    print(z,L)
+    if(np.isnan(L) or np.isinf(L)):
+        print(z, expect, L)
+        #print(np.exp(-expect))
+        #print(expect**y)
+        #print((expect**y)*np.exp(-expect))
         exit()
+
     return L
 
 def Likelihood_Time(vertex, *args):
-    fired, time = args
+    coeff, PMT_pos, fired, time, cut, str_s = args
     y = time
     # fixed axis
     z = abs(vertex[1])
-    if z >= 0.99:
-        z = np.sign(z) - 1.1e-2
-        
-    if z<=-1.1e-3:
-        vertex[2] = vertex[2] + np.pi
-        vertex[3] = vertex[3] + np.pi
+    if z > 1:
+        z = np.sign(z)-1e-6
+
+    if z<1e-3:
+        # assume (0,0,1)
+        # cos_theta = PMT_pos[:,2] / norm(PMT_pos,axis=1)
+        vertex[1] = 1e-3
+        z = 1e-3
         v = r2c(vertex[1:4])
         cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
-    elif(np.abs(z) <= 1.1e-2):
-        # assume (0,0,1)
-        z = 1.1e-3
-        cos_theta = PMT_pos[:,2] / norm(PMT_pos,axis=1)
     else:
         v = r2c(vertex[1:4])
         cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
-    
     # accurancy and nan value
     cos_theta = np.nan_to_num(cos_theta)
     cos_theta[cos_theta>1] = 1
@@ -182,23 +163,25 @@ def Likelihood_Time(vertex, *args):
     cos_total = cos_theta[fired]
     
     size = np.size(cos_total)
-    cut = np.size(Time_coeff[:,0])
     x = np.zeros((size, cut))
     # legendre theta of PMTs
     for i in np.arange(0,cut):
         c = np.zeros(cut)
         c[i] = 1
         x[:,i] = LG.legval(cos_total,c)
-    if z <= 1.1e-2:
-        z = 1.1e-2
-        x = np.ones((np.size(time),cut))
+        
     # legendre coeff by polynomials
     k = np.zeros((1,cut))
     for i in np.arange(cut):
-        # cubic interp
-        if(np.abs(z)>=0.99):
-            z = 1-1.1e-2
-        k[0,i] = Time_func_list[i](z)
+        # Legendre fit
+        # k[i] = np.sum(np.polynomial.legendre.legval(z,coeff[i,:]))
+        # polynomial fit
+        if(i % 2 == 0):
+            #k[0,i] = coeff[i,0] + coeff[i,1] * z ** 2 + coeff[i,2] * z ** 4 + coeff[i,3] * z ** 6 + coeff[i,4] * z ** 8
+            k[0,i] = np.sum(coeff[i,:] * z ** np.arange(0,2*np.size(coeff[i,:]),2))
+        elif(i % 2 == 1):
+            #k[0,i] = coeff[i,0] * z + coeff[i,1] * z ** 3 + coeff[i,2] * z ** 5 + coeff[i,3] * z ** 7 + coeff[i,4] * z ** 9
+            k[0,i] = np.sum(coeff[i,:] * z ** np.arange(1,2*np.size(coeff[i,:])+1,2))
     k[0,0] = vertex[4]
     T_i = np.dot(x, np.transpose(k))
     #L = Likelihood_quantile(y, T_i[:,0], 0.1, 0.3)
@@ -255,21 +238,32 @@ def recon(fid, fout, *args):
     class ReconData(tables.IsDescription):
         EventID = tables.Int64Col(pos=0)    # EventNo
         # inner recon
-        E_sph = tables.Float16Col(pos=1)        # Energy
-        x_sph = tables.Float16Col(pos=2)        # x position
-        y_sph = tables.Float16Col(pos=3)        # y position
-        z_sph = tables.Float16Col(pos=4)        # z position
-        t0 = tables.Float16Col(pos=5)       # time offset
-        success = tables.Int64Col(pos=6)    # recon failure   
-        Likelihood = tables.Float16Col(pos=7)
+        E_sph_in = tables.Float16Col(pos=1)        # Energy
+        x_sph_in = tables.Float16Col(pos=2)        # x position
+        y_sph_in = tables.Float16Col(pos=3)        # y position
+        z_sph_in = tables.Float16Col(pos=4)        # z position
+        t0_in = tables.Float16Col(pos=5)       # time offset
+        success_in = tables.Int64Col(pos=6)    # recon failure   
+        Likelihood_in = tables.Float16Col(pos=7)
         
-        x_truth = tables.Float16Col(pos=8)        # x position
-        y_truth = tables.Float16Col(pos=9)        # y position
-        z_truth = tables.Float16Col(pos=10)        # z position
-        E_truth = tables.Float16Col(pos=11)        # z position
-                        
+        # outer recon
+        E_sph_out = tables.Float16Col(pos=8)        # Energy
+        x_sph_out = tables.Float16Col(pos=9)        # x position
+        y_sph_out = tables.Float16Col(pos=10)        # y position
+        z_sph_out = tables.Float16Col(pos=11)        # z position
+        t0_out = tables.Float16Col(pos=12)       # time offset
+        success_out = tables.Int64Col(pos=13)    # recon failure 
+        Likelihood_out = tables.Float16Col(pos=14)
+
+        # truth info
+        x_truth = tables.Float16Col(pos=15)        # x position
+        y_truth = tables.Float16Col(pos=16)        # y position
+        z_truth = tables.Float16Col(pos=17)        # z position
+        E_truth = tables.Float16Col(pos=18)        # z position
         # unfinished
-        tau_d = tables.Float16Col(pos=12)    # decay time constant
+        tau_d = tables.Float16Col(pos=19)    # decay time constant
+    class TruthData(tables.IsDescription):
+        pes = tables.Int16Col(pos=20)
 
     # Create the output file and the group
     h5file = tables.open_file(fout, mode="w", title="OneTonDetector",
@@ -278,6 +272,8 @@ def recon(fid, fout, *args):
     # Create tables
     ReconTable = h5file.create_table(group, "Recon", ReconData, "Recon")
     recondata = ReconTable.row
+    TruthTable = h5file.create_table(group, "Truth", TruthData, "Truth")
+    truthdata = TruthTable.row
     # Loop for event
 
     f = uproot.open(fid)
@@ -298,114 +294,97 @@ def recon(fid, fout, *args):
                 fired_PMT = np.hstack((fired_PMT, ch*np.ones(np.size(pk))))
             except:
                 pass
-        event_count = event_count + 1
-        
-        if(event_count > 0):
-            fired_PMT = fired_PMT.astype(int)
-            # initial result
-            result_vertex = np.empty((0,5)) # reconstructed vertex
-
-            # Constraints
-            E_min = -10
-            E_max = 10
-            tau_min = 0.01
-            tau_max = 100
-            t0_min = -300
-            t0_max = 600
-
-            # inner recon
-            # initial value
-            x0_in = np.zeros((1,5))
-            x0_in[0][0] = 0.8 + np.log(np.sum(pe_array)/60)
-            x0_in[0][4] = np.mean(time_array) - 26
-
-            x0_in[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)/shell
-            x0_in[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)/shell
-            x0_in[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)/shell
-
-            a = c2r(x0_in[0][1:4])
-            a[0] = a[0]/shell
-            if(a[0] < 0.01):
-                a[0] = 0.01
-            # not added yet
-            x0 = np.hstack((x0_in[0][0], a, x0_in[0][4]))
-            result_ini = minimize(Likelihood, x0, method='SLSQP',bounds=((-10, 10), (1e-3, 1-1e-3), (None, None), (None, None), (None, None)), args = (fired_PMT, time_array, pe_array))
-
-            in2 = r2c(result_ini.x[1:4])*shell
-
-            recondata['EventID'] = event_count
-            recondata['x_sph'] = in2[0]
-            recondata['y_sph'] = in2[1]
-            recondata['z_sph'] = in2[2]
-            recondata['E_sph'] = result_ini.x[0]
-            recondata['t0'] = result_ini.x[4]       
-            recondata['success'] = result_ini.success
-            recondata['Likelihood'] = result_ini.fun                
-            recondata.append()
-            if(result_ini.success):
-                rr = np.arange(0.01, 0.65, 0.001)
-                L = np.zeros_like(rr)
-                for bi, bb in enumerate(rr):
-                    vertex = result_ini.x.copy()
-                    vertex[1] = bb/0.65
-                    L[bi] = Likelihood(vertex, *(fired_PMT, time_array, pe_array))
-                imax = np.where(L == np.max(L))
-                #plt.figure()
-                #plt.plot(rr/0.65, L)
-                diff = np.diff(L)
-                index = (diff[1:]*diff[:-1]*(diff[1:]>diff[:-1]))<0
-                seq = np.array(np.where(index==1)) + 1
-                seq = seq[0]
-                if(np.size(imax[0])==1):
-                    if((imax[0] == 0) or (imax[0] == np.size(rr)-1)):
-                        pass
-                    else:
-                        seq = np.hstack((seq, imax[0] - 1, imax[0] + 1))
-                        #plt.axvline(rr[imax[0]]/0.65)
-                else:
-                    pass
-                
-                if(np.size(seq)>1):
-                    result_new = []
-                    xx0 = []
-                    for si,ss in enumerate(seq):
-                        x0 = result_ini.x.copy()
-                        x0[1] = rr[ss]/0.65
-                        #plt.axvline(rr[ss]/0.65, color = 'green')
-                        xx0.append(x0[1])
-                        if(x0[1] < 0.01):
-                            x0[1] = 0.01
-                        elif(x0[1] > 0.98):
-                            x0[1] = 0.98
-                        result_new.append(minimize(Likelihood, x0, method='SLSQP',\
-                           bounds=((-10, 10), (1e-3, 1-1e-3), (None, None), (None, None), (None, None)), \
-                           args = (fired_PMT, time_array, pe_array)))
-
-                #plt.axvline(result_ini.x[1], color = 'red')
-
-                recondata.append()
-                print('initial')
-                print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.3f, Likelihood: %+.2f' % (event_count, in2[0], in2[1], in2[2], norm(in2), result_ini.fun))
-                print('iter')
-                for si,ss in enumerate(seq):
-                    out2 = r2c(result_new[si].x[1:4])*shell
-                    print('%d: [%+.2f, %+.2f, %+.2f] begin:%+.3f radius: %+.3f, Likelihood: %+.2f' % (event_count, out2[0], out2[1], out2[2], xx0[si]*shell, norm(out2), result_new[si].fun))
-
-                    recondata['EventID'] = event_count
-                    recondata['x_sph'] = out2[0]
-                    recondata['y_sph'] = out2[1]
-                    recondata['z_sph'] = out2[2]
-                    recondata['E_sph'] = result_new[si].x[0]
-                    recondata['t0'] = result_new[si].x[4]       
-                    recondata['success'] = result_new[si].success
-                    recondata['Likelihood'] = result_new[si].fun                
-                    recondata.append()
-
-                print('-'*80)
-                #plt.savefig('test%d.png' % event_count)
+            
+        if(event_count < 14):
+            event_count = event_count + 1
         else:
-            pass
-        
+            if np.sum(pe_array)!=0:
+                for ii in np.arange(np.size(pe_array)):
+                    truthdata['pes'] = pe_array[ii]
+                    truthdata.append()
+
+                fired_PMT = fired_PMT.astype(int)
+                # initial result
+                result_vertex = np.empty((0,5)) # reconstructed vertex
+
+                # Constraints
+                E_min = -10
+                E_max = 10
+                # inner recon
+                # initial value
+                x0_in = np.zeros((1,5))
+                x0_in[0][0] = 0.8 + np.log(np.sum(pe_array)/60)
+                x0_in[0][4] = np.mean(time_array) - 26
+
+                x0_in[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)/shell
+                x0_in[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)/shell
+                x0_in[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)/shell
+                a = c2r(x0_in[0][1:4])
+                a[0] = a[0]/shell
+
+                x0 = np.hstack((x0_in[0][0], a, x0_in[0][4]))
+                result_in = minimize(Likelihood, x0, method='SLSQP',bounds=((E_min, E_max), (0, 1), (None, None), (None, None), (None, None)), args = (coeff_time_in, coeff_pe_in, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
+
+                # new added avoid boundry:
+
+                in2 = r2c(result_in.x[1:4])*shell
+                recondata['x_sph_in'] = in2[0]
+                recondata['y_sph_in'] = in2[1]
+                recondata['z_sph_in'] = in2[2]
+                recondata['E_sph_in'] = result_in.x[0]
+                recondata['success_in'] = result_in.success
+                recondata['Likelihood_in'] = result_in.fun
+
+                # outer recon
+                # initial value
+                tmp = result_in.x
+                x0_out = x0_in.copy()
+                x0_out[0] = tmp
+                x0_out[0][1]=0.92                
+                x0 =x0_out
+                result_out = minimize(Likelihood, x0, method='SLSQP',bounds=((E_min, E_max), (0,1), (None, None), (None, None),(None, None)), args = (coeff_time_out, coeff_pe_out, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
+
+                out2 = r2c(result_out.x[1:4]) * shell
+                recondata['x_sph_out'] = out2[0]
+                recondata['y_sph_out'] = out2[1]
+                recondata['z_sph_out'] = out2[2]
+                recondata['E_sph_out'] = result_out.x[0]
+                recondata['success_out'] = result_out.success
+                recondata['Likelihood_out'] = result_out.fun
+                
+                
+                #print(x0_in, x0_out, pe_array)
+                print('inner')
+                print(result_in.fun)
+                print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.2f, Likelihood: %+.2f' % (event_count, in2[0], in2[1], in2[2], norm(in2), result_in.fun))
+                print(norm(in2)/shell)
+                #print(event_count, result_in.x[1:4] * shell, np.sqrt(np.sum(result_in.x[1:4]**2)),result_in.fun)
+                print('outer')
+                print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.2f, Likelihood: %+.2f' % (event_count, out2[0], out2[1], out2[2], norm(out2), result_out.fun))
+                #print(event_count, result_out.x[1:4] * shell, np.sqrt(np.sum(result_out.x[1:4]**2)), result_out.fun)
+                print(norm(out2)/shell)
+                print('-'*60)
+
+            else:
+                recondata['x_sph_in'] = 0
+                recondata['y_sph_in'] = 0
+                recondata['z_sph_in'] = 0
+                recondata['E_sph_in'] = 0
+                recondata['success_in'] = 0
+                recondata['Likelihood_in'] = 0
+
+                recondata['x_sph_out'] = 0
+                recondata['y_sph_out'] = 0
+                recondata['z_sph_out'] = 0
+                recondata['E_sph_out'] = 0
+                recondata['success_out'] = 0
+                recondata['Likelihood_out'] = 0
+                print('empty event!')
+                print('-'*60)
+            recondata.append()
+
+            event_count = event_count + 1
+            exit()
     # Flush into the output file
     ReconTable.flush()
     h5file.close()
@@ -423,10 +402,9 @@ event_count = 0
 # Reconstruction
 fid = sys.argv[1] # input file .h5
 fout = sys.argv[2] # output file .h5
+coeff_pe_in, coeff_pe_out, coeff_time_in, coeff_time_out,\
+    cut_pe, fitcut_pe, cut_time, fitcut_time\
+    = load_coeff()
 
-PE_radius, PE_coeff = load_spline(order = eval(sys.argv[3]))
-Time_radius, Time_coeff = load_spline(path='../calib/coeff_time_1t_2.0MeV_dns_Lasso/', lowerlimit = 0.01, order = 5)
-PE_func_list = fun_cubic(PE_radius/0.65, PE_coeff)
-Time_func_list = fun_cubic(Time_radius/0.65, Time_coeff)
 args = PMT_pos, event_count
 recon(fid, fout, *args)

@@ -1,0 +1,308 @@
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.436_z_2.root result_1t_2.0MeV_dns/1t_+0.436_z_2.h5 5 > log/1t_+0.436_z_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.542_y_3.root result_1t_2.0MeV_dns/1t_+0.542_y_3.h5 5 > log/1t_+0.542_y_3.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.230_y_2.root result_1t_2.0MeV_dns/1t_-0.230_y_2.h5 5 > log/1t_-0.230_y_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.564_x.root result_1t_2.0MeV_dns/1t_-0.564_x.h5 5 > log/1t_-0.564_x.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.456_y_1.root result_1t_2.0MeV_dns/1t_-0.456_y_1.h5 5 > log/1t_-0.456_y_1.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.130_x_1.root result_1t_2.0MeV_dns/1t_-0.130_x_1.h5 5 > log/1t_-0.130_x_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.626_y_1.root result_1t_2.0MeV_dns/1t_+0.626_y_1.h5 5 > log/1t_+0.626_y_1.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.628_x.root result_1t_2.0MeV_dns/1t_+0.628_x.h5 5 > log/1t_+0.628_x.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.120_z.root result_1t_2.0MeV_dns/1t_+0.120_z.h5 5 > log/1t_+0.120_z.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.546_z_2.root result_1t_2.0MeV_dns/1t_-0.546_z_2.h5 5 > log/1t_-0.546_z_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.210_z.root result_1t_2.0MeV_dns/1t_+0.210_z.h5 5 > log/1t_+0.210_z.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.330_x_1.root result_1t_2.0MeV_dns/1t_-0.330_x_1.h5 5 > log/1t_-0.330_x_1.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.578_y.root result_1t_2.0MeV_dns/1t_-0.578_y.h5 5 > log/1t_-0.578_y.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.540_y.root result_1t_2.0MeV_dns/1t_-0.540_y.h5 5 > log/1t_-0.540_y.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.584_x.root result_1t_2.0MeV_dns/1t_+0.584_x.h5 5 > log/1t_+0.584_x.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.448_z.root result_1t_2.0MeV_dns/1t_+0.448_z.h5 5 > log/1t_+0.448_z.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.482_z_2.root result_1t_2.0MeV_dns/1t_-0.482_z_2.h5 5 > log/1t_-0.482_z_2.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.400_y_1.root result_1t_2.0MeV_dns/1t_-0.400_y_1.h5 5 > log/1t_-0.400_y_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.472_y_2.root result_1t_2.0MeV_dns/1t_+0.472_y_2.h5 5 > log/1t_+0.472_y_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.290_y.root result_1t_2.0MeV_dns/1t_+0.290_y.h5 5 > log/1t_+0.290_y.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.290_z.root result_1t_2.0MeV_dns/1t_+0.290_z.h5 5 > log/1t_+0.290_z.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.528_y.root result_1t_2.0MeV_dns/1t_+0.528_y.h5 5 > log/1t_+0.528_y.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.380_x_2.root result_1t_2.0MeV_dns/1t_-0.380_x_2.h5 5 > log/1t_-0.380_x_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.070_z_1.root result_1t_2.0MeV_dns/1t_-0.070_z_1.h5 5 > log/1t_-0.070_z_1.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.484_x.root result_1t_2.0MeV_dns/1t_+0.484_x.h5 5 > log/1t_+0.484_x.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.496_z.root result_1t_2.0MeV_dns/1t_-0.496_z.h5 5 > log/1t_-0.496_z.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.560_y_1.root result_1t_2.0MeV_dns/1t_-0.560_y_1.h5 5 > log/1t_-0.560_y_1.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.564_y_1.root result_1t_2.0MeV_dns/1t_-0.564_y_1.h5 5 > log/1t_-0.564_y_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.466_x_1.root result_1t_2.0MeV_dns/1t_+0.466_x_1.h5 5 > log/1t_+0.466_x_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.406_z_2.root result_1t_2.0MeV_dns/1t_-0.406_z_2.h5 5 > log/1t_-0.406_z_2.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.200_z.root result_1t_2.0MeV_dns/1t_+0.200_z.h5 5 > log/1t_+0.200_z.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.170_z.root result_1t_2.0MeV_dns/1t_-0.170_z.h5 5 > log/1t_-0.170_z.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.452_x_2.root result_1t_2.0MeV_dns/1t_+0.452_x_2.h5 5 > log/1t_+0.452_x_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.408_x_3.root result_1t_2.0MeV_dns/1t_-0.408_x_3.h5 5 > log/1t_-0.408_x_3.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.480_z_2.root result_1t_2.0MeV_dns/1t_-0.480_z_2.h5 5 > log/1t_-0.480_z_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.614_x_1.root result_1t_2.0MeV_dns/1t_+0.614_x_1.h5 5 > log/1t_+0.614_x_1.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.448_x_2.root result_1t_2.0MeV_dns/1t_-0.448_x_2.h5 5 > log/1t_-0.448_x_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.416_y_3.root result_1t_2.0MeV_dns/1t_-0.416_y_3.h5 5 > log/1t_-0.416_y_3.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.438_z_2.root result_1t_2.0MeV_dns/1t_-0.438_z_2.h5 5 > log/1t_-0.438_z_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.290_y_1.root result_1t_2.0MeV_dns/1t_-0.290_y_1.h5 5 > log/1t_-0.290_y_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.602_z.root result_1t_2.0MeV_dns/1t_+0.602_z.h5 5 > log/1t_+0.602_z.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.110_z.root result_1t_2.0MeV_dns/1t_+0.110_z.h5 5 > log/1t_+0.110_z.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.524_y_2.root result_1t_2.0MeV_dns/1t_+0.524_y_2.h5 5 > log/1t_+0.524_y_2.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.616_z_1.root result_1t_2.0MeV_dns/1t_-0.616_z_1.h5 5 > log/1t_-0.616_z_1.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.550_y.root result_1t_2.0MeV_dns/1t_+0.550_y.h5 5 > log/1t_+0.550_y.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.404_y_1.root result_1t_2.0MeV_dns/1t_-0.404_y_1.h5 5 > log/1t_-0.404_y_1.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.506_z_1.root result_1t_2.0MeV_dns/1t_-0.506_z_1.h5 5 > log/1t_-0.506_z_1.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.466_y_2.root result_1t_2.0MeV_dns/1t_+0.466_y_2.h5 5 > log/1t_+0.466_y_2.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.598_z.root result_1t_2.0MeV_dns/1t_-0.598_z.h5 5 > log/1t_-0.598_z.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.626_z.root result_1t_2.0MeV_dns/1t_-0.626_z.h5 5 > log/1t_-0.626_z.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.470_x_1.root result_1t_2.0MeV_dns/1t_+0.470_x_1.h5 5 > log/1t_+0.470_x_1.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.562_y_3.root result_1t_2.0MeV_dns/1t_-0.562_y_3.h5 5 > log/1t_-0.562_y_3.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.546_y_1.root result_1t_2.0MeV_dns/1t_-0.546_y_1.h5 5 > log/1t_-0.546_y_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.548_x_1.root result_1t_2.0MeV_dns/1t_+0.548_x_1.h5 5 > log/1t_+0.548_x_1.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.418_x_2.root result_1t_2.0MeV_dns/1t_-0.418_x_2.h5 5 > log/1t_-0.418_x_2.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.010_z.root result_1t_2.0MeV_dns/1t_+0.010_z.h5 5 > log/1t_+0.010_z.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.130_x_2.root result_1t_2.0MeV_dns/1t_-0.130_x_2.h5 5 > log/1t_-0.130_x_2.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.596_y_1.root result_1t_2.0MeV_dns/1t_+0.596_y_1.h5 5 > log/1t_+0.596_y_1.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.100_z.root result_1t_2.0MeV_dns/1t_+0.100_z.h5 5 > log/1t_+0.100_z.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.472_x.root result_1t_2.0MeV_dns/1t_+0.472_x.h5 5 > log/1t_+0.472_x.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.570_x_3.root result_1t_2.0MeV_dns/1t_-0.570_x_3.h5 5 > log/1t_-0.570_x_3.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.564_z.root result_1t_2.0MeV_dns/1t_+0.564_z.h5 5 > log/1t_+0.564_z.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.428_x.root result_1t_2.0MeV_dns/1t_-0.428_x.h5 5 > log/1t_-0.428_x.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.618_x_1.root result_1t_2.0MeV_dns/1t_+0.618_x_1.h5 5 > log/1t_+0.618_x_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.504_x.root result_1t_2.0MeV_dns/1t_-0.504_x.h5 5 > log/1t_-0.504_x.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.578_x_1.root result_1t_2.0MeV_dns/1t_-0.578_x_1.h5 5 > log/1t_-0.578_x_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.438_y_2.root result_1t_2.0MeV_dns/1t_-0.438_y_2.h5 5 > log/1t_-0.438_y_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.580_z.root result_1t_2.0MeV_dns/1t_-0.580_z.h5 5 > log/1t_-0.580_z.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.556_x_1.root result_1t_2.0MeV_dns/1t_+0.556_x_1.h5 5 > log/1t_+0.556_x_1.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.490_y_1.root result_1t_2.0MeV_dns/1t_+0.490_y_1.h5 5 > log/1t_+0.490_y_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.616_y_1.root result_1t_2.0MeV_dns/1t_-0.616_y_1.h5 5 > log/1t_-0.616_y_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.518_x_1.root result_1t_2.0MeV_dns/1t_-0.518_x_1.h5 5 > log/1t_-0.518_x_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.080_z_1.root result_1t_2.0MeV_dns/1t_+0.080_z_1.h5 5 > log/1t_+0.080_z_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.648_z.root result_1t_2.0MeV_dns/1t_+0.648_z.h5 5 > log/1t_+0.648_z.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.564_x_2.root result_1t_2.0MeV_dns/1t_-0.564_x_2.h5 5 > log/1t_-0.564_x_2.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.620_y_1.root result_1t_2.0MeV_dns/1t_+0.620_y_1.h5 5 > log/1t_+0.620_y_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.558_z_2.root result_1t_2.0MeV_dns/1t_+0.558_z_2.h5 5 > log/1t_+0.558_z_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.626_y.root result_1t_2.0MeV_dns/1t_-0.626_y.h5 5 > log/1t_-0.626_y.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.320_z.root result_1t_2.0MeV_dns/1t_-0.320_z.h5 5 > log/1t_-0.320_z.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.480_x_1.root result_1t_2.0MeV_dns/1t_-0.480_x_1.h5 5 > log/1t_-0.480_x_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.504_x_1.root result_1t_2.0MeV_dns/1t_-0.504_x_1.h5 5 > log/1t_-0.504_x_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.130_z_1.root result_1t_2.0MeV_dns/1t_+0.130_z_1.h5 5 > log/1t_+0.130_z_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.240_y_1.root result_1t_2.0MeV_dns/1t_-0.240_y_1.h5 5 > log/1t_-0.240_y_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.504_x_3.root result_1t_2.0MeV_dns/1t_+0.504_x_3.h5 5 > log/1t_+0.504_x_3.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.482_x.root result_1t_2.0MeV_dns/1t_-0.482_x.h5 5 > log/1t_-0.482_x.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.010_y.root result_1t_2.0MeV_dns/1t_+0.010_y.h5 5 > log/1t_+0.010_y.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.578_y_2.root result_1t_2.0MeV_dns/1t_-0.578_y_2.h5 5 > log/1t_-0.578_y_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.100_y.root result_1t_2.0MeV_dns/1t_+0.100_y.h5 5 > log/1t_+0.100_y.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.584_x_2.root result_1t_2.0MeV_dns/1t_+0.584_x_2.h5 5 > log/1t_+0.584_x_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.606_x.root result_1t_2.0MeV_dns/1t_-0.606_x.h5 5 > log/1t_-0.606_x.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.608_x.root result_1t_2.0MeV_dns/1t_-0.608_x.h5 5 > log/1t_-0.608_x.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.472_y_3.root result_1t_2.0MeV_dns/1t_+0.472_y_3.h5 5 > log/1t_+0.472_y_3.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.060_x_1.root result_1t_2.0MeV_dns/1t_+0.060_x_1.h5 5 > log/1t_+0.060_x_1.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.270_z_1.root result_1t_2.0MeV_dns/1t_-0.270_z_1.h5 5 > log/1t_-0.270_z_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.428_y_3.root result_1t_2.0MeV_dns/1t_-0.428_y_3.h5 5 > log/1t_-0.428_y_3.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.518_y_2.root result_1t_2.0MeV_dns/1t_-0.518_y_2.h5 5 > log/1t_-0.518_y_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.410_z_2.root result_1t_2.0MeV_dns/1t_-0.410_z_2.h5 5 > log/1t_-0.410_z_2.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.496_z_2.root result_1t_2.0MeV_dns/1t_-0.496_z_2.h5 5 > log/1t_-0.496_z_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.592_x_1.root result_1t_2.0MeV_dns/1t_+0.592_x_1.h5 5 > log/1t_+0.592_x_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.020_z_2.root result_1t_2.0MeV_dns/1t_+0.020_z_2.h5 5 > log/1t_+0.020_z_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.572_z_2.root result_1t_2.0MeV_dns/1t_+0.572_z_2.h5 5 > log/1t_+0.572_z_2.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.200_z_2.root result_1t_2.0MeV_dns/1t_+0.200_z_2.h5 5 > log/1t_+0.200_z_2.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.190_z.root result_1t_2.0MeV_dns/1t_+0.190_z.h5 5 > log/1t_+0.190_z.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.170_z_2.root result_1t_2.0MeV_dns/1t_-0.170_z_2.h5 5 > log/1t_-0.170_z_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.210_z_2.root result_1t_2.0MeV_dns/1t_+0.210_z_2.h5 5 > log/1t_+0.210_z_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.566_y.root result_1t_2.0MeV_dns/1t_+0.566_y.h5 5 > log/1t_+0.566_y.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.596_x_2.root result_1t_2.0MeV_dns/1t_+0.596_x_2.h5 5 > log/1t_+0.596_x_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.570_y.root result_1t_2.0MeV_dns/1t_+0.570_y.h5 5 > log/1t_+0.570_y.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.606_y_1.root result_1t_2.0MeV_dns/1t_-0.606_y_1.h5 5 > log/1t_-0.606_y_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.530_x_1.root result_1t_2.0MeV_dns/1t_+0.530_x_1.h5 5 > log/1t_+0.530_x_1.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.220_z_1.root result_1t_2.0MeV_dns/1t_+0.220_z_1.h5 5 > log/1t_+0.220_z_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.320_z.root result_1t_2.0MeV_dns/1t_+0.320_z.h5 5 > log/1t_+0.320_z.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.538_z.root result_1t_2.0MeV_dns/1t_-0.538_z.h5 5 > log/1t_-0.538_z.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.090_y.root result_1t_2.0MeV_dns/1t_+0.090_y.h5 5 > log/1t_+0.090_y.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.438_x_1.root result_1t_2.0MeV_dns/1t_-0.438_x_1.h5 5 > log/1t_-0.438_x_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.484_z.root result_1t_2.0MeV_dns/1t_-0.484_z.h5 5 > log/1t_-0.484_z.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.556_z_1.root result_1t_2.0MeV_dns/1t_-0.556_z_1.h5 5 > log/1t_-0.556_z_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.270_y_1.root result_1t_2.0MeV_dns/1t_-0.270_y_1.h5 5 > log/1t_-0.270_y_1.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.466_y_3.root result_1t_2.0MeV_dns/1t_+0.466_y_3.h5 5 > log/1t_+0.466_y_3.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.474_y.root result_1t_2.0MeV_dns/1t_+0.474_y.h5 5 > log/1t_+0.474_y.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.436_z.root result_1t_2.0MeV_dns/1t_+0.436_z.h5 5 > log/1t_+0.436_z.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.450_x.root result_1t_2.0MeV_dns/1t_-0.450_x.h5 5 > log/1t_-0.450_x.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.418_x_3.root result_1t_2.0MeV_dns/1t_-0.418_x_3.h5 5 > log/1t_-0.418_x_3.log
+mkdir -p result_1t_2.0MeV_dns
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.438_y_1.root result_1t_2.0MeV_dns/1t_-0.438_y_1.h5 5 > log/1t_-0.438_y_1.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.428_x_1.root result_1t_2.0MeV_dns/1t_-0.428_x_1.h5 5 > log/1t_-0.428_x_1.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.010_z_2.root result_1t_2.0MeV_dns/1t_+0.010_z_2.h5 5 > log/1t_+0.010_z_2.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.100_z_2.root result_1t_2.0MeV_dns/1t_+0.100_z_2.h5 5 > log/1t_+0.100_z_2.log
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.472_x_2.root result_1t_2.0MeV_dns/1t_+0.472_x_2.h5 5 > log/1t_+0.472_x_2.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.482_y_2.root result_1t_2.0MeV_dns/1t_+0.482_y_2.h5 5 > log/1t_+0.482_y_2.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.516_x_1.root result_1t_2.0MeV_dns/1t_-0.516_x_1.h5 5 > log/1t_-0.516_x_1.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.638_y.root result_1t_2.0MeV_dns/1t_+0.638_y.h5 5 > log/1t_+0.638_y.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.616_y.root result_1t_2.0MeV_dns/1t_-0.616_y.h5 5 > log/1t_-0.616_y.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.476_x_1.root result_1t_2.0MeV_dns/1t_+0.476_x_1.h5 5 > log/1t_+0.476_x_1.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.624_x_2.root result_1t_2.0MeV_dns/1t_-0.624_x_2.h5 5 > log/1t_-0.624_x_2.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.330_z_2.root result_1t_2.0MeV_dns/1t_-0.330_z_2.h5 5 > log/1t_-0.330_z_2.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.610_x_1.root result_1t_2.0MeV_dns/1t_+0.610_x_1.h5 5 > log/1t_+0.610_x_1.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.448_z.root result_1t_2.0MeV_dns/1t_-0.448_z.h5 5 > log/1t_-0.448_z.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.458_x_1.root result_1t_2.0MeV_dns/1t_+0.458_x_1.h5 5 > log/1t_+0.458_x_1.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.480_x.root result_1t_2.0MeV_dns/1t_-0.480_x.h5 5 > log/1t_-0.480_x.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.462_y_3.root result_1t_2.0MeV_dns/1t_-0.462_y_3.h5 5 > log/1t_-0.462_y_3.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.300_x.root result_1t_2.0MeV_dns/1t_-0.300_x.h5 5 > log/1t_-0.300_x.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.130_z.root result_1t_2.0MeV_dns/1t_+0.130_z.h5 5 > log/1t_+0.130_z.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.628_x_1.root result_1t_2.0MeV_dns/1t_+0.628_x_1.h5 5 > log/1t_+0.628_x_1.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.120_z_1.root result_1t_2.0MeV_dns/1t_+0.120_z_1.h5 5 > log/1t_+0.120_z_1.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.470_y_3.root result_1t_2.0MeV_dns/1t_+0.470_y_3.h5 5 > log/1t_+0.470_y_3.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.456_y_1.root result_1t_2.0MeV_dns/1t_+0.456_y_1.h5 5 > log/1t_+0.456_y_1.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.548_y_3.root result_1t_2.0MeV_dns/1t_+0.548_y_3.h5 5 > log/1t_+0.548_y_3.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.310_z.root result_1t_2.0MeV_dns/1t_+0.310_z.h5 5 > log/1t_+0.310_z.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.590_x_2.root result_1t_2.0MeV_dns/1t_+0.590_x_2.h5 5 > log/1t_+0.590_x_2.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.614_z_2.root result_1t_2.0MeV_dns/1t_-0.614_z_2.h5 5 > log/1t_-0.614_z_2.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_-0.578_y_1.root result_1t_2.0MeV_dns/1t_-0.578_y_1.h5 5 > log/1t_-0.578_y_1.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.584_x_1.root result_1t_2.0MeV_dns/1t_+0.584_x_1.h5 5 > log/1t_+0.584_x_1.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.566_z_2.root result_1t_2.0MeV_dns/1t_+0.566_z_2.h5 5 > log/1t_+0.566_z_2.log
+mkdir -p result_1t_2.0MeV_dns
+python3 Recon_1t_shell.py /mnt/stage/douwei/Simulation/1t_root/2.0MeV_dns/1t_+0.586_x_2.root result_1t_2.0MeV_dns/1t_+0.586_x_2.h5 5 > log/1t_+0.586_x_2.log

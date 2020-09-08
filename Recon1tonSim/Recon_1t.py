@@ -28,23 +28,23 @@ c = 2.99792e8
 n = 1.48
 
 # boundaries
-shell_in = 0.85 # Acrylic
-shell_out = 0.8
 shell = 0.65
 
-def load_coeff(order):
-    h = tables.open_file('../calib/PE_coeff_1t' + order + '.h5','r')
-    coeff_pe_in = h.root.poly_in[:]
-    coeff_pe_out = h.root.poly_out[:]
+def load_coeff():
+    h = tables.open_file('../calib/PE_coeff_1t.h5','r')
+    coeff_pe_in = h.root.coeff_L_in[:]
+    coeff_pe_out = h.root.coeff_L_out[:]
+    bd_pe = h.root.bd[()] 
     h.close()
     cut_pe, fitcut_pe = coeff_pe_in.shape
 
-    h = tables.open_file('../calib/Time_coeff_1t' + order + '.h5','r')
-    coeff_time_in = h.root.poly_in[:]
-    coeff_time_out = h.root.poly_out[:]
+    h = tables.open_file('../calib/Time_coeff_1t_0.10.h5','r')
+    coeff_time_in = h.root.coeff_L_in[:]
+    coeff_time_out = h.root.coeff_L_out[:]
+    bd_time = h.root.bd[()]
     h.close()
     cut_time, fitcut_time = coeff_time_in.shape
-    return coeff_pe_in, coeff_pe_out, coeff_time_in, coeff_time_out, cut_pe, fitcut_pe, cut_time, fitcut_time
+    return coeff_pe_in, coeff_pe_out, coeff_time_in, coeff_time_out, cut_pe, fitcut_pe, cut_time, fitcut_time, bd_pe, bd_time
 
 def r2c(c):
     v = np.zeros(3)
@@ -67,25 +67,18 @@ def Likelihood(vertex, *args):
     vertex[2]: theta
     vertex[3]: phi
     '''
-    coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, str_s = args
-    L1 = Likelihood_PE(vertex, *(coeff_pe, PMT_pos, pe_array, cut_pe, str_s))
-    L2 = Likelihood_Time(vertex, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time, str_s))
-    return L1+L2
+    coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe = args
+    L1 = Likelihood_PE(vertex, *(coeff_pe, PMT_pos, pe_array, cut_pe))
+    L2 = Likelihood_Time(vertex, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time))
+    return L1 + L2
                          
 def Likelihood_PE(vertex, *args):
-    coeff, PMT_pos, event_pe, cut, str_s = args
+    coeff, PMT_pos, event_pe, cut = args
     y = event_pe
     
     z = abs(vertex[1])
-    if z > 1:
-        z = np.sign(z)-1e-6
-
-    if (str_s == 'in'):
-        if(np.abs(z) > shell_in - 1e-6):
-            z = np.sign(z) * shell_in - 1e-6
-    elif (str_s == 'out'):
-        if(np.abs(z) < shell_out + 1e-6):
-            z = np.sign(z) * shell_out + 1e-6
+    if z > 1-1e-3:
+        z = np.sign(z)-1e-3
             
     if z<1e-3:
         # assume (0,0,1)
@@ -106,51 +99,43 @@ def Likelihood_PE(vertex, *args):
         c[i] = 1
         x[:,i] = LG.legval(cos_theta,c)
     if z < 1e-3:
-        x = np.ones((30,5))
+        x = np.ones((30,cut))
     # legendre coeff by polynomials
     k = np.zeros(cut)
-    for i in np.arange(cut):
-        # Legendre fit
-        # k[i] = np.sum(np.polynomial.legendre.legval(z,coeff[i,:]))
-        # polynomial fit
-        
-        if(i % 2 == 0):
-            # k[i] = coeff[i,0] + coeff[i,1] * z ** 2 + coeff[i,2] * z ** 4 + coeff[i,3] * z ** 6 + coeff[i,4] * z ** 8 + \
-            k[i] = np.sum(coeff[i,:] * z ** np.arange(0,2*np.size(coeff[i,:]),2))
-            
-        elif(i % 2 == 1):
-            # k[i] = coeff[i,0] * z + coeff[i,1] * z ** 3 + coeff[i,2] * z ** 5 + coeff[i,3] * z ** 7 + coeff[i,4] * z ** 9
-            k[i] = np.sum(coeff[i,:] * z ** np.arange(1,2*np.size(coeff[i,:])+1,2))
 
+    if(z>=bd_pe):
+        k = LG.legval(z, coeff_pe_out.T)
+    else:
+        k = LG.legval(z, coeff_pe_in.T)
+    
     k[0] = vertex[0]
     expect = np.exp(np.dot(x,k))
     a1 = expect**y
     a2 = np.exp(-expect)
-    a1[a1<1e-20] = 1e-20
-    a2[a2>1e50] = 1e50
+    a1[(a1<1e-20) & (np.isnan(a1))] = 1e-20
+    a1[(a1>1e50) & (np.isinf(a1))] = 1e50
+    a2[(a2<1e-20) & (np.isnan(a2))] = 1e-20
+    a2[(a2>1e50) & (np.isinf(a2))] = 1e50
+    
     L = - np.sum(np.sum(np.log(a1*a2)))
+    if(np.isinf(L) or L>1e20):
+        L = 1e20
+
     if(np.isnan(L)):
+        print(L, a1, a2)
         print(z, expect)
-        #print(np.exp(-expect))
-        #print(expect**y)
-        #print((expect**y)*np.exp(-expect))
+        print(event_pe)
+        print(vertex)
         exit()
     return L
 
 def Likelihood_Time(vertex, *args):
-    coeff, PMT_pos, fired, time, cut, str_s = args
+    coeff, PMT_pos, fired, time, cut = args
     y = time
     # fixed axis
     z = abs(vertex[1])
     if z > 1:
         z = np.sign(z)-1e-6
-
-    if (str_s == 'in'):
-        if(np.abs(z) > shell_in - 1e-6):
-            z = np.sign(z) * shell_in - 1e-6
-    elif (str_s == 'out'):
-        if(np.abs(z) < shell_out + 1e-6):
-            z = np.sign(z) * shell_out + 1e-6
 
     if z<1e-3:
         # assume (0,0,1)
@@ -171,6 +156,8 @@ def Likelihood_Time(vertex, *args):
     
     size = np.size(cos_total)
     x = np.zeros((size, cut))
+    
+    
     # legendre theta of PMTs
     for i in np.arange(0,cut):
         c = np.zeros(cut)
@@ -179,29 +166,27 @@ def Likelihood_Time(vertex, *args):
         
     # legendre coeff by polynomials
     k = np.zeros((1,cut))
-    for i in np.arange(cut):
-        # Legendre fit
-        # k[i] = np.sum(np.polynomial.legendre.legval(z,coeff[i,:]))
-        # polynomial fit
-        if(i % 2 == 0):
-            #k[0,i] = coeff[i,0] + coeff[i,1] * z ** 2 + coeff[i,2] * z ** 4 + coeff[i,3] * z ** 6 + coeff[i,4] * z ** 8
-            k[0,i] = np.sum(coeff[i,:] * z ** np.arange(0,2*np.size(coeff[i,:]),2))
-        elif(i % 2 == 1):
-            #k[0,i] = coeff[i,0] * z + coeff[i,1] * z ** 3 + coeff[i,2] * z ** 5 + coeff[i,3] * z ** 7 + coeff[i,4] * z ** 9
-            k[0,i] = np.sum(coeff[i,:] * z ** np.arange(1,2*np.size(coeff[i,:])+1,2))
+    if(z>=bd_pe):
+        k[0] = LG.legval(z, coeff_time_out.T)
+    else:
+        k[0] = LG.legval(z, coeff_time_in.T)
+    
     k[0,0] = vertex[4]
     T_i = np.dot(x, np.transpose(k))
-    #L = Likelihood_quantile(y, T_i[:,0], 0.1, 0.3)
-    L = - np.nansum(TimeProfile(y, T_i[:,0]))
+    L = np.nansum(Likelihood_quantile(y, T_i[:,0], 0.1, 0.3))
+    #L = - np.nansum(TimeProfile(y, T_i[:,0]))
     return L
 
 def Likelihood_quantile(y, T_i, tau, ts):
-    less = T_i[y<T_i] - y[y<T_i]
-    more = y[y>=T_i] - T_i[y>=T_i]
+    #less = T_i[y<T_i] - y[y<T_i]
+    #more = y[y>=T_i] - T_i[y>=T_i]
+    
+    #R = (1-tau)*np.sum(less) + tau*np.sum(more)
+    L1 = (T_i-y)*(y<T_i)*(1-tau) + (y-T_i)*(y>=T_i)*tau
+    L = - L1/ts
 
-    R = (1-tau)*np.sum(less) + tau*np.sum(more)
     #log_Likelihood = exp
-    return R
+    return L
 
 def TimeProfile(y,T_i):
     time_correct = y - T_i
@@ -218,29 +203,6 @@ def TimeUncertainty(tc, tau_d):
     a4 = np.exp(((TTS**2*(tau_d+tau_r) - tc*tau_d*tau_r)**2 - tc**2*tau_d**2*tau_r**2)/(2*TTS**2*tau_d**2*tau_r**2))*special.erf((tc*tau_d*tau_r-TTS**2*(tau_d+tau_r))/(np.sqrt(2)*tau_d*tau_r*TTS))
     p_time = np.log(tau_d + tau_r) - 2*np.log(tau_d) + np.log(a1-a2+a3-a4)
     return p_time
-
-def con_sph_in(args):
-    E_min,\
-    E_max,\
-    tau_min,\
-    tau_max,\
-    t0_min,\
-    t0_max\
-    = args
-    cons = ({'type': 'ineq', 'fun': lambda x: shell_in**2 - (x[1]**2 + x[2]**2 + x[3]**2)})
-    return cons
-
-def con_sph_out(args):
-    E_min,\
-    E_max,\
-    tau_min,\
-    tau_max,\
-    t0_min,\
-    t0_max\
-    = args
-    cons = ({'type': 'ineq', 'fun': lambda x: 1**2 - (x[1]**2 + x[2]**2 + x[3]**2)},\
-           {'type': 'ineq', 'fun': lambda x: (x[1]**2 + x[2]**2 + x[3]**2) - shell_out**2})
-    return cons
 
 def ReadPMT():
     f = open(r"./PMT_1t.txt")
@@ -324,101 +286,89 @@ def recon(fid, fout, *args):
                 fired_PMT = np.hstack((fired_PMT, ch*np.ones(np.size(pk))))
             except:
                 pass
-        
-        for ii in np.arange(np.size(pe_array)):
-            truthdata['pes'] = pe_array[ii]
-            truthdata.append()
+        if np.sum(pe_array)!=0:
+            for ii in np.arange(np.size(pe_array)):
+                truthdata['pes'] = pe_array[ii]
+                truthdata.append()
 
-        fired_PMT = fired_PMT.astype(int)
-        # initial result
-        result_vertex = np.empty((0,5)) # reconstructed vertex
-        
-        # Constraints
-        E_min = -10
-        E_max = 10
-        tau_min = 0.01
-        tau_max = 100
-        t0_min = -300
-        t0_max = 600
-        
-        # inner recon
-        # initial value
-        x0_in = np.zeros((1,5))
-        x0_in[0][0] = 0.8 + np.log(np.sum(pe_array)/60)
-        x0_in[0][4] = np.mean(time_array) - 26
+            fired_PMT = fired_PMT.astype(int)
+            # initial result
+            result_vertex = np.empty((0,5)) # reconstructed vertex
 
-        x0_in[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)/shell
-        x0_in[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)/shell
-        x0_in[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)/shell
+            # Constraints
+            E_min = -10
+            E_max = 10
+            # inner recon
+            # initial value
+            x0_in = np.zeros((1,5))
+            x0_in[0][0] = 0.8 + np.log(np.sum(pe_array)/60)
+            x0_in[0][4] = np.mean(time_array) - 26
 
-        a = c2r(x0_in[0][1:4])
-        a[0] = a[0]/shell
-        #b = r2c(a)
-        #print(x0_in[0][1:4],a,b)
-        #exit()
-        
-        # not added yet
-        con_args = E_min, E_max, tau_min, tau_max, t0_min, t0_max
-        cons_sph_in = con_sph_in(con_args)
-        x0 = np.hstack((x0_in[0][0], a, x0_in[0][4]))
-        # result_in = minimize(Likelihood, x0, method='SLSQP',bounds=((E_min, E_max), (0, shell_in), (-np.pi/2, np.pi/2), (0, 2*np.pi), (None, None)), args = (coeff_time_in, coeff_pe_in, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, 'in'))
-        result_in = minimize(Likelihood, x0, method='SLSQP',bounds=((E_min, E_max), (0, shell_in+1e-6), (None, None), (None, None), (None, None)), args = (coeff_time_in, coeff_pe_in, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, 'in'))
+            x0_in[0][1] = np.sum(pe_array*PMT_pos[:,0])/np.sum(pe_array)/shell
+            x0_in[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)/shell
+            x0_in[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)/shell
+            a = c2r(x0_in[0][1:4])
+            a[0] = a[0]/shell
 
-        # new added avoid boundry:
-        '''
-        if(shell_in - result_in.x[1] < 1e-3):
-            x0 = result_in.x
-            result_bd = minimize(Likelihood, x0, method='SLSQP',bounds=((E_min, E_max), (shell_out-1e-6,1), (None, None), (None, None),(None, None)), args = (coeff_time_out, coeff_pe_out, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, 'out'))
-            if(result_bd.fun < result_in.fun):
-                result_in = result_bd
-        '''
-        in2 = r2c(result_in.x[1:4])*shell
-        recondata['x_sph_in'] = in2[0]
-        recondata['y_sph_in'] = in2[1]
-        recondata['z_sph_in'] = in2[2]
-        recondata['E_sph_in'] = result_in.x[0]
-        recondata['success_in'] = result_in.success
-        recondata['Likelihood_in'] = result_in.fun
+            x0 = np.hstack((x0_in[0][0], a, x0_in[0][4]))
+            result_in = minimize(Likelihood, x0, method='SLSQP',bounds=((E_min, E_max), (0, 1), (None, None), (None, None), (None, None)), args = (coeff_time_in, coeff_pe_in, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
 
-        # outer recon
-        # initial value
-        x0_out = x0_in.copy()
-        x0_out[0][1:4] = x0_in[0][1:4] /np.sqrt(np.sum(x0_in[0][1:4]**2))*0.85
-        a = c2r(x0_out[0][1:4])
-        # not added yet
-        con_args = E_min, E_max, tau_min, tau_max, t0_min, t0_max
-        cons_sph_out = con_sph_out(con_args)
-        x0 = np.hstack((x0_out[0][0], a, x0_out[0][4]))
-        result_out = minimize(Likelihood, x0, method='SLSQP',bounds=((E_min, E_max), (shell_out,1), (None, None), (None, None),(None, None)), args = (coeff_time_out, coeff_pe_out, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, 'out'))
-        '''
-        # new added avoid boundry:
-        if(result_out.x[1] - shell_out < 1e-3):
-            print('hahahaha')
-            x0 = result_out.x
-            result_bd = minimize(Likelihood, x0, method='SLSQP',bounds=((E_min, E_max), (0, shell_in), (None, None), (None, None), (None, None)), args = (coeff_time_in, coeff_pe_in, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, 'in'))
-            if(result_bd.fun < result_out.fun):
-                result_out = result_bd
-        '''     
-        out2 = r2c(result_out.x[1:4]) * shell
-        recondata['x_sph_out'] = out2[0]
-        recondata['y_sph_out'] = out2[1]
-        recondata['z_sph_out'] = out2[2]
-        recondata['E_sph_out'] = result_out.x[0]
-        recondata['success_out'] = result_out.success
-        recondata['Likelihood_out'] = result_out.fun
+            # new added avoid boundry:
 
-        #vertex = result.x[1:4]
-        #print(result.x, np.sqrt(np.sum(vertex**2)))
+            in2 = r2c(result_in.x[1:4])*shell
+            recondata['x_sph_in'] = in2[0]
+            recondata['y_sph_in'] = in2[1]
+            recondata['z_sph_in'] = in2[2]
+            recondata['E_sph_in'] = result_in.x[0]
+            recondata['success_in'] = result_in.success
+            recondata['Likelihood_in'] = result_in.fun
+
+            # outer recon
+            # initial value
+            tmp = result_in.x
+            x0_out = x0_in.copy()
+            x0_out[0] = tmp
+            x0_out[0][1]=0.92                
+            x0 =x0_out
+            # not added yet
+            x0 = np.hstack((x0_out[0][0], a, x0_out[0][4]))
+            result_out = minimize(Likelihood, x0, method='SLSQP',bounds=((E_min, E_max), (0,1), (None, None), (None, None),(None, None)), args = (coeff_time_out, coeff_pe_out, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
+
+            out2 = r2c(result_out.x[1:4]) * shell
+            recondata['x_sph_out'] = out2[0]
+            recondata['y_sph_out'] = out2[1]
+            recondata['z_sph_out'] = out2[2]
+            recondata['E_sph_out'] = result_out.x[0]
+            recondata['success_out'] = result_out.success
+            recondata['Likelihood_out'] = result_out.fun
+            print('inner')
+            print(result_in.fun)
+            print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.2f, Likelihood: %+.2f' % (event_count, in2[0], in2[1], in2[2], norm(in2), result_in.fun))
+            #print(event_count, result_in.x[1:4] * shell, np.sqrt(np.sum(result_in.x[1:4]**2)),result_in.fun)
+            print('outer')
+            print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.2f, Likelihood: %+.2f' % (event_count, out2[0], out2[1], out2[2], norm(out2), result_out.fun))
+            #print(event_count, result_out.x[1:4] * shell, np.sqrt(np.sum(result_out.x[1:4]**2)), result_out.fun)
+            print('-'*60)
+        else:
+            recondata['x_sph_in'] = 0
+            recondata['y_sph_in'] = 0
+            recondata['z_sph_in'] = 0
+            recondata['E_sph_in'] = 0
+            recondata['success_in'] = 0
+            recondata['Likelihood_in'] = 0
+            
+            recondata['x_sph_out'] = 0
+            recondata['y_sph_out'] = 0
+            recondata['z_sph_out'] = 0
+            recondata['E_sph_out'] = 0
+            recondata['success_out'] = 0
+            recondata['Likelihood_out'] = 0
+            print('empty event!')
+            print('-'*60)
         recondata.append()
-        print('inner')
-        print(result_in.fun)
-        print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.2f, Likelihood: %+.2f' % (event_count, in2[0], in2[1], in2[2], norm(in2), result_in.fun))
-        #print(event_count, result_in.x[1:4] * shell, np.sqrt(np.sum(result_in.x[1:4]**2)),result_in.fun)
-        print('outer')
-        print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.2f, Likelihood: %+.2f' % (event_count, out2[0], out2[1], out2[2], norm(out2), result_out.fun))
-        #print(event_count, result_out.x[1:4] * shell, np.sqrt(np.sum(result_out.x[1:4]**2)), result_out.fun)
-        print('-'*60)
+        
         event_count = event_count + 1
+
     # Flush into the output file
     ReconTable.flush()
     h5file.close()
@@ -437,8 +387,9 @@ event_count = 0
 fid = sys.argv[1] # input file .h5
 fout = sys.argv[2] # output file .h5
 coeff_pe_in, coeff_pe_out, coeff_time_in, coeff_time_out,\
-    cut_pe, fitcut_pe, cut_time, fitcut_time\
-    = load_coeff(sys.argv[3])
+    cut_pe, fitcut_pe, cut_time, fitcut_time,\
+    bd_pe, bd_time\
+    = load_coeff()
 
 args = PMT_pos, event_count
 recon(fid, fout, *args)
