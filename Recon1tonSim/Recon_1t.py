@@ -1,5 +1,4 @@
 # recon range: [-1,1], need * detector radius
-
 import numpy as np
 import scipy, h5py
 import scipy.stats as stats
@@ -69,8 +68,8 @@ def Likelihood(vertex, *args):
     '''
     coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe = args
     L1 = Likelihood_PE(vertex, *(coeff_pe, PMT_pos, pe_array, cut_pe))
-    L2 = Likelihood_Time(vertex, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time))
-    return L1 + L2
+    #L2 = Likelihood_Time(vertex, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time))
+    return L1
                          
 def Likelihood_PE(vertex, *args):
     coeff, PMT_pos, event_pe, cut = args

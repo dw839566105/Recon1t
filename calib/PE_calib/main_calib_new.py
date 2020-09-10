@@ -23,6 +23,7 @@ from scipy.optimize import rosen_der
 from numpy.polynomial import legendre as LG
 import matplotlib.pyplot as plt
 from scipy.linalg import norm
+import time
 
 np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
 
@@ -68,8 +69,13 @@ def Calib(theta, *args):
     '''
     total_pe, PMT_pos, cut, LegendreCoeff = args
     y = total_pe
-    # corr = np.dot(LegendreCoeff, theta) + np.tile(base, (1, np.int(np.size(LegendreCoeff)/np.size(base)/np.size(theta))))[0,:]
-    corr = np.dot(LegendreCoeff, theta)
+    PMT_corr = np.zeros(30)
+    PMT_corr[0:-1] = theta[cut:]
+    PMT_corr[-1] = -np.sum(theta[cut:])
+    corr = np.dot(LegendreCoeff, theta[0:cut])
+    X = np.tile(PMT_corr, (1, np.int(np.size(LegendreCoeff)/30/cut)))[0,:]
+    corr = np.dot(LegendreCoeff, theta[0:cut])+X
+    #corr = np.dot(LegendreCoeff, theta[0:cut])
     # Poisson regression as a log likelihood
     # https://en.wikipedia.org/wiki/Poisson_regression
     L0 = - np.sum(np.sum(np.transpose(y)*np.transpose(corr) \
@@ -80,10 +86,10 @@ def Calib(theta, *args):
     # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ElasticNet.html#sklearn.linear_model.ElasticNet
     rho = 1
     alpha = 0.001
-    L = L0/(2*np.size(y)) + alpha * rho * norm(theta,1) + 1/2* alpha * (1-rho) * norm(theta,2) # elastic net
-    return L
+    #L = L0/(2*np.size(y)) + alpha * rho * norm(theta,1) + 1/2* alpha * (1-rho) * norm(theta,2) # elastic net
+    return L0
 
-def Legendre_coeff(PMT_pos, vertex, cut):
+def Legendre_coeff(PMT_pos_rep, vertex, cut):
     '''
     # calulate the Legendre value of transformed X
     # input: PMT_pos: PMT No * 3
@@ -92,21 +98,25 @@ def Legendre_coeff(PMT_pos, vertex, cut):
     # output: x: as 'X' at the beginnig    
     
     '''
-    size = np.size(PMT_pos[:,0])
+    size = np.size(PMT_pos_rep[:,0])
     # oh, it will use norm in future version
+    
     if(np.sum(vertex**2) > 1e-6):
-        cos_theta = np.sum(vertex*PMT_pos,axis=1)\
-            /np.sqrt(np.sum(vertex**2)*np.sum(PMT_pos**2,axis=1))
+        cos_theta = np.sum(vertex*PMT_pos_rep,axis=1)\
+            /np.sqrt(np.sum(vertex**2, axis=1)*np.sum(PMT_pos_rep**2,axis=1))
     else:
         # make r=0 as a boundry, it should be improved
         cos_theta = np.ones(size)
+
     x = np.zeros((size, cut))
     # legendre coeff
     for i in np.arange(0,cut):
         c = np.zeros(cut)
         c[i] = 1
         x[:,i] = LG.legval(cos_theta,c)
-    return x
+
+    print(PMT_pos_rep.shape, x.shape, cos_theta.shape)
+    return x, cos_theta
 
 def hessian(x, *args):
     # hession matrix calulation written by dw, for later uncertainty analysis
@@ -149,12 +159,13 @@ def readfile(filename):
     try:
         h1 = tables.open_file(filename,'r')
     except:
+        print(filename)
         exit()
     print(filename)
     truthtable = h1.root.GroundTruth
     EventID = truthtable[:]['EventID']
     ChannelID = truthtable[:]['ChannelID']
-    
+    Q = h1.root.PETruthData[:]['Q']
     x = h1.root.TruthData[:]['x']
     y = h1.root.TruthData[:]['y']
     z = h1.root.TruthData[:]['z']
@@ -182,9 +193,9 @@ def readfile(filename):
         x = x[~dn_index]
         y = y[~dn_index]
         z = z[~dn_index]
-    return (EventID, ChannelID, x, y, z)
+    return (EventID, Q, x, y, z)
     
-def readchain(radius, path, axis):
+def readchain(radius, path):
     '''
     # This program is to read series files
     # Since root file will recorded as 'filename.root', if too large, it will use '_n' as suffix
@@ -197,23 +208,25 @@ def readchain(radius, path, axis):
         if(i == 0):
             # filename = path + '1t_' + radius + '.h5'
             # eg: /mnt/stage/douwei/Simulation/1t_root/2.0MeV_xyz/1t_+0.030.h5
-            filename = '%s1t_%s_%sQ.h5' % (path, radius, axis)
-            EventID, ChannelID, x, y, z = readfile(filename)
+            filename = '%s1t_%sQ.h5' % (path, radius)
+            EventID, Q, x, y, z = readfile(filename)
         else:
             try:
                 # filename = path + '1t_' + radius + '_n.h5'
                 # eg: /mnt/stage/douwei/Simulation/1t_root/2.0MeV_xyz/1t_+0.030_1.h5
-                filename = '%s1t_%s_%s_%dQ.h5' % (path, radius, axis, i)
-                EventID1, ChannelID1, x1, y1, z1 = readfile(filename)
+                filename = '%s1t_%s_%dQ.h5' % (path, radius, i)
+                EventID1, Q1, x1, y1, z1 = readfile(filename)
                 EventID = np.hstack((EventID, EventID1))
                 ChannelID = np.hstack((ChannelID, ChannelID1))
+                Q = np.hstack((Q, Q1))
                 x = np.hstack((x, x1))
                 y = np.hstack((y, y1))
                 z = np.hstack((z, z1))
             except:
+                print(filename)
                 exit()
 
-    return EventID, ChannelID, x, y, z
+    return EventID, Q, x, y, z
     
 def main_Calib(radius, path, fout, cut_max):
     '''
@@ -232,7 +245,7 @@ def main_Calib(radius, path, fout, cut_max):
         # +x, -x, +y, -y, +z, -z or has a little lean (z axis is the worst! use (0,2,10) instead) 
         # In ceter, no positive or negative, the read program should be changed
         # In simulation, the (0,0,0) saved as '*-0.000.h5' is negative
-                EventID, Q, xx, yx, zx = readchain(radius, path,'+')
+        EventID, Q, xx, yx, zx = readchain(radius, path)
         x1 = np.vstack((xx, yx, zx)).T
 
         print('total event: %d' % np.size(np.unique(EventID)), flush=True)
@@ -241,47 +254,27 @@ def main_Calib(radius, path, fout, cut_max):
         # this part for the same vertex
         tmp = time.time()
         EventNo = np.size(np.unique(EventID))
+        print(EventNo,x1.shape)
         PMTNo = np.size(PMT_pos[:,0])
         PMT_pos_rep = np.tile(PMT_pos, (EventNo,1))
         vertex = np.repeat(x1, PMTNo, axis=0)/1e3
-
         tmp_x_p, cos_theta = Legendre_coeff(PMT_pos_rep, vertex, cut_max)
         print(f'use {time.time() - tmp} s')
         LegendreCoeff = tmp_x_p
         
         print('begin get coeff')
-        print('total pe shape:', total_pe.shape)
+        print('total pe shape:', Q.shape)
         print('Legendre coeff shape:',LegendreCoeff.shape)
         
         for cut in np.arange(2,cut_max,1):
-            theta0 = np.zeros(cut) # initial value
+            theta0 = np.zeros(cut + 29) # initial value
             theta0[0] = 0.8 + np.log(2) # intercept is much more important
-            print(rosen_der)
-            result = minimize(Calib, theta0, method='Newton-CG', jac=rosen_der, hess='3-point', args = (total_pe, PMT_pos, cut, LegendreCoeff[:,0:cut])) 
-            record = np.array(result.x, dtype=float)
-            # hessian not tested
-            # H = hessian(result.x, *(total_pe, PMT_pos, cut, LegendreCoeff[:,0:cut]))
-            # H_I = np.linalg.pinv(np.matrix(H))
-            vs = np.reshape(total_pe[0:sizex_p*30],(-1,30), order='C')
-            mean = np.mean(vs, axis=0)
-            args = (total_pe, PMT_pos, cut)
-            # following should be optimize...
-            predict = [];
-            predict.append(np.exp(np.dot(LegendreCoeff[0:30,0:cut], result.x)))
-            predict = np.transpose(predict)
-            print('%d-th coeff:\n' % cut, record,'\n')
-            print('%d-th predict:\n' % cut, predict[:,0],'\n')
-            print('Mean hit:\n', mean,'\n')      
-            print('Saving file...')
-            # chi2square             
-            # chi2sq = 2*np.sum(- total_pe + predict + np.nan_to_num(total_pe*np.log(total_pe/predict)), axis=1)/(np.max(EventID)-30)
+            result = minimize(Calib, theta0, args = (Q, PMT_pos, cut, LegendreCoeff[:,0:cut])) 
+            print(result.x)
+            print(result.fun)
+            out.create_dataset('coeff' + str(cut), data = result.x)
+            out.create_dataset('AIC' + str(cut), data = result.fun)
 
-            out.create_dataset('coeff' + str(cut), data = record)
-            out.create_dataset('mean' + str(cut), data = mean)
-            out.create_dataset('predict' + str(cut), data = predict)
-            #out.create_dataset('rate' + str(cut), data = np.size(total_pe)/30)
-            #out.create_dataset('hinv' + str(cut), data = H_I)
-            #out.create_dataset('chi' + str(cut), data = chi2sq)
 
 if len(sys.argv)!=5:
     print("Wront arguments!")

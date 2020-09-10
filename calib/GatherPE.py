@@ -26,7 +26,7 @@ def main_photon(path, order):
     coeff_pe = np.reshape(coeff_pe,(-1,np.size(rd)),order='F')
     return rd, coeff_pe
 def main(order=5, fit_order=10):
-    rd, coeff_pe = main_photon('coeff_pe_1t_shell_200000/',order)
+    rd, coeff_pe = main_photon('coeff_pe_1t_8.0MeV_shell_1/',order)
     rd = np.array(rd)
     coeff_pe = np.array(coeff_pe)
     #coeff_pe[1][51:58] = np.interp(rd[51:58],np.array((rd[51], rd[57])), np.array((coeff_pe[1][51],coeff_pe[1][57])))
@@ -49,43 +49,43 @@ def main(order=5, fit_order=10):
                 w_in[-2:] = 1000
             # Legendre coeff
             B_in, tmp = np.polynomial.legendre.legfit(np.hstack((rd[index_in]/np.max(rd),-rd[index_in]/np.max(rd))), \
-                                                      np.hstack((coeff_pe[i+1,index_in], coeff_pe[i+1,index_in])), \
+                                                      np.hstack((coeff_pe[i,index_in], coeff_pe[i,index_in])), \
                                                       deg = fit_order, w = np.hstack((w_in,w_in)), full = True)
 
             y1_in = np.polynomial.legendre.legval(rd[index_in]/np.max(rd), B_in)
 
             B_out, tmp = np.polynomial.legendre.legfit(np.hstack((rd[index_out]/np.max(rd),-rd[index_out]/np.max(rd))), \
-                                                      np.hstack((coeff_pe[i+1,index_out], coeff_pe[i+1,index_out])), \
+                                                      np.hstack((coeff_pe[i,index_out], coeff_pe[i,index_out])), \
                                                       deg = fit_order, w = np.hstack((w_out,w_out)), full = True)
             y1_out = np.polynomial.legendre.legval(rd[index_out]/np.max(rd), B_out)
             # polynormial coeff
             C_in = np.polyfit(np.hstack((rd[index_in]/np.max(rd),-rd[index_in]/np.max(rd))), \
-                              np.hstack((coeff_pe[i+1,index_in], coeff_pe[i+1,index_in])), \
+                              np.hstack((coeff_pe[i,index_in], coeff_pe[i,index_in])), \
                               deg=fit_order)
             y2_in = np.polyval(C_in, rd[index_in]/np.max(rd))
 
             C_out = np.polyfit(np.hstack((rd[index_out]/np.max(rd),-rd[index_out]/np.max(rd))), \
-                      np.hstack((coeff_pe[i+1,index_out], coeff_pe[i+1,index_out])), \
+                      np.hstack((coeff_pe[i,index_out], coeff_pe[i,index_out])), \
                       deg=fit_order)
             y2_out = np.polyval(C_out, rd[index_out]/np.max(rd))
 
         else:
             B_in, tmp = np.polynomial.legendre.legfit(np.hstack((rd[index_in]/np.max(rd),-rd[index_in]/np.max(rd))), \
-                                                      np.hstack((coeff_pe[i+1,index_in], -coeff_pe[i+1,index_in])), \
+                                                      np.hstack((coeff_pe[i,index_in], -coeff_pe[i,index_in])), \
                                                       deg=fit_order, w = np.hstack((w_in,w_in)), full=True)
             y1_in = np.polynomial.legendre.legval(rd[index_in]/np.max(rd), B_in)
 
             B_out, tmp = np.polynomial.legendre.legfit(np.hstack((rd[index_out]/np.max(rd),-rd[index_out]/np.max(rd))), \
-                                                      np.hstack((coeff_pe[i+1,index_out], -coeff_pe[i+1,index_out])), \
+                                                      np.hstack((coeff_pe[i,index_out], -coeff_pe[i,index_out])), \
                                                       deg=fit_order, w = np.hstack((w_out,w_out)), full=True)
             y1_out = np.polynomial.legendre.legval(rd[index_out]/np.max(rd), B_out)
             C_in = np.polyfit(np.hstack((rd[index_in]/np.max(rd),-rd[index_in]/np.max(rd))), \
-                      np.hstack((coeff_pe[i+1,index_in], coeff_pe[i+1,index_in])), \
+                      np.hstack((coeff_pe[i,index_in], coeff_pe[i,index_in])), \
                       deg=fit_order)
             y2_in = np.polyval(C_in, rd[index_in]/np.max(rd))
 
             C_out = np.polyfit(np.hstack((rd[index_out]/np.max(rd),-rd[index_out]/np.max(rd))), \
-                      np.hstack((coeff_pe[i+1,index_out], coeff_pe[i+1,index_out])), \
+                      np.hstack((coeff_pe[i,index_out], coeff_pe[i,index_out])), \
                       deg=fit_order)
             y2_out = np.polyval(C_out, rd[index_out]/np.max(rd))
         coeff_L_in[i] = B_in
@@ -94,7 +94,7 @@ def main(order=5, fit_order=10):
         coeff_p_out[i] = C_out
         plt.figure(num = i+1, dpi = 300)
         #plt.plot(rd, np.hstack((y2_in, y2_out[1:])), label='poly')
-        plt.plot(rd, coeff_pe[i+1], 'r.', label='real',linewidth=2)
+        plt.plot(rd, coeff_pe[i], 'r.', label='real',linewidth=2)
         plt.plot(rd, np.hstack((y1_in, y1_out[1:])), label = 'Legendre')
         plt.xlabel('radius/m')
         plt.ylabel('PE Legendre coefficients')

@@ -1,0 +1,9 @@
+srcL:=$(wildcard /mnt/stage/douwei/Simulation/1t_root/shell_200000/*.root)
+#srcL:=$(wildcard /home/douwei/JSAP/DetectorStructure/output/1t_calib/*.root)
+dstL:=$(srcL:%.root=%Q.h5)
+
+.PHONY: all
+all: $(dstL)
+
+%Q.h5: %.root
+	nice -n 19 python3 ConvertTruthQ.py $^ $@

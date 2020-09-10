@@ -11,7 +11,7 @@ upper:=0.65
 lower:=0.01
 radius:=$(shell seq -f '%+.3f' $(upper) -0.01 $(lower))
 
-save_pe:=coeff_pe_1t_$(E)
+save_pe:=coeff_pe_1t_$(E)_1
 save_time:=coeff_time_1t_$(E)
 
 src_pe:=$(radius:%=$(save_pe)/file_%.h5)
