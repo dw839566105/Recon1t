@@ -310,7 +310,7 @@ def main_Calib(radius, path, fout, cut_max, PMT_pos):
             L = np.zeros(len(tss))
             for index1, qt in enumerate(qts):
                 result = minimize(Calib, theta0, method='SLSQP',\
-                    args = (EventID, ChannelID, PETime, PMT_pos_rep, cut, LegendreCoeff[:,0:cut], qt, 25*qt))
+                    args = (EventID, ChannelID, PulseTime, PMT_pos_rep, cut, LegendreCoeff[:,0:cut], qt, 25*qt))
                 for index2, td in enumerate(tss):
                     ts = td*qt
                     _L = Calib(theta0,\

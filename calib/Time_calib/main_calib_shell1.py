@@ -267,10 +267,10 @@ def main_Calib(radius, path, fout, cut_max, qt, PMT_pos):
         tmp_x_p, cos_theta = Legendre_coeff(PMT_pos_rep, vertex, cut_max)
         print(f'use {time.time() - tmp} s')
         LegendreCoeff = tmp_x_p
-        PETime = np.atleast_2d(PETime).T
+        PulseTime = np.atleast_2d(PulseTime).T
         
         str_form = 'y ~ x1 + x2 + x3'
-        data = pd.DataFrame(data = np.hstack([LegendreCoeff[:,0:4], PETime]), columns = ["x0", "x1", "x2", "x3","y"])
+        data = pd.DataFrame(data = np.hstack([LegendreCoeff[:,0:4], PulseTime]), columns = ["x0", "x1", "x2", "x3","y"])
         for cut in np.arange(5,cut_max,1):
             key = "x%d" % (cut - 1)
             data[key] = LegendreCoeff[:,cut-1]
