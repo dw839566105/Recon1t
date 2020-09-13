@@ -1,12 +1,13 @@
 .PHONY: all
 
-E:=shell_200000
+#E:=shell_200000
+E:=8.0MeV_shell
 # 2.0MeV_dns: no dark noise, all PMTs are the same
 # 2.0MeV_dn: no dark noise, PMTs are different
 # 2.0MeV_xyz: dark noise thereshold 1
 # 2.0MeV_20000: dark noise threshold 25
 path:=/mnt/stage/douwei/Simulation/1t_root/$(E)/
-qt:=0.05
+qt:=0.2
 
 upper:=0.65
 lower:=0.00
@@ -16,7 +17,7 @@ save_time:=coeff_time_1t_$(E)_$(qt)
 
 src_time:=$(radius:%=$(save_time)/file_%.h5)
 
-order:=11
+order:=6
 
 all: $(src_time)
 
