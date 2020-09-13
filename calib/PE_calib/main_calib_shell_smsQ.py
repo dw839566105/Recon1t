@@ -188,7 +188,7 @@ def readchain(radius, path, axis):
     #        axis: 'x' or 'y' or 'z', 'str'
     # output: the gathered result EventID, ChannelID, x, y, z
     '''
-    for i in np.arange(0, 50):
+    for i in np.arange(0, 100):
         if(i == 0):
             # filename = path + '1t_' + radius + '.h5'
             # eg: /mnt/stage/douwei/Simulation/1t_root/2.0MeV_xyz/1t_+0.030.h5
