@@ -26,6 +26,8 @@ from scipy.linalg import norm
 from sklearn.linear_model import Lasso
 from sklearn.linear_model import TweedieRegressor
 import statsmodels.api as sm
+import functools
+print = functools.partial(print, flush=True)
 
 
 np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
