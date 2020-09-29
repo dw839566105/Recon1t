@@ -1,8 +1,8 @@
 .PHONY: all
 
-order:=10
+order:=15
 E:=2.0MeV_dns
-prog:=Recon_1t
+prog:=Recon_1t_shell_cubic
 path:=/mnt/stage/douwei/Simulation/1t_root/$(E)/
 save:=result_1t_$(E)_$(prog)_2
 #sim:=$(wildcard $(path)1t_*.root)
@@ -12,7 +12,7 @@ all:$(dst)
 
 $(save)/%.h5:$(path)%.root
 	mkdir -p $(save)
-	python3.6 $(prog).py $^ $@ $(order) > log/$*.log
+	python3 $(prog).py $^ $@ $(order) > log/$*.log
 
 # Delete partial files when the processes are killed.
 .DELETE_ON_ERROR:

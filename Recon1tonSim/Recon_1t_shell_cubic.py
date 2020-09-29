@@ -429,7 +429,7 @@ order = sys.argv[3]
 # Read PMT position
 PMT_pos = ReadPMT()
 event_count = 0
-rd, coeff_pe = main_photon('../calib/coeff_pe_1t_shell_200000/',order)
+rd, coeff_pe = main_photon('../calib/coeff_pe_1t_8.0MeV_shell_1/',order)
 PE_func_list = fun_cubic(rd/shell, coeff_pe)
 
 

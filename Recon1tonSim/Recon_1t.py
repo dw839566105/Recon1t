@@ -37,7 +37,7 @@ def load_coeff():
     h.close()
     cut_pe, fitcut_pe = coeff_pe_in.shape
 
-    h = tables.open_file('../calib/Time_coeff_1t_0.10.h5','r')
+    h = tables.open_file('../calib/Time_coeff_1t_0.05.h5','r')
     coeff_time_in = h.root.coeff_L_in[:]
     coeff_time_out = h.root.coeff_L_out[:]
     bd_time = h.root.bd[()]
@@ -91,15 +91,10 @@ def Likelihood_PE(vertex, *args):
         cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
     
     size = np.size(PMT_pos[:,0])
-    x = np.zeros((size, cut))
-    # legendre theta of PMTs
-    for i in np.arange(0,cut):
-        c = np.zeros(cut)
-        c[i] = 1
-        x[:,i] = LG.legval(cos_theta,c)
-    if z < 1e-3:
-        x = np.ones((30,cut))
-    # legendre coeff by polynomials
+    
+    c = np.diag((np.ones(cut)))
+    x = LG.legval(cos_theta, c).T
+    
     k = np.zeros(cut)
 
     if(z>=bd_pe):
@@ -154,15 +149,10 @@ def Likelihood_Time(vertex, *args):
     cos_total = cos_theta[fired]
     
     size = np.size(cos_total)
-    x = np.zeros((size, cut))
     
-    
-    # legendre theta of PMTs
-    for i in np.arange(0,cut):
-        c = np.zeros(cut)
-        c[i] = 1
-        x[:,i] = LG.legval(cos_total,c)
-        
+    c = np.diag((np.ones(cut)))
+    x = LG.legval(cos_total, c).T
+
     # legendre coeff by polynomials
     k = np.zeros((1,cut))
     if(z>=bd_pe):
@@ -172,7 +162,7 @@ def Likelihood_Time(vertex, *args):
     
     k[0,0] = vertex[4]
     T_i = np.dot(x, np.transpose(k))
-    L = np.nansum(Likelihood_quantile(y, T_i[:,0], 0.1, 0.3))
+    L = np.nansum(Likelihood_quantile(y, T_i[:,0], 0.05, 1.25))
     #L = - np.nansum(TimeProfile(y, T_i[:,0]))
     return L
 
@@ -182,8 +172,9 @@ def Likelihood_quantile(y, T_i, tau, ts):
     
     #R = (1-tau)*np.sum(less) + tau*np.sum(more)
     L1 = (T_i-y)*(y<T_i)*(1-tau) + (y-T_i)*(y>=T_i)*tau
-    L = - L1/ts
+    L = L1/ts
 
+    #print(np.sum(L1),L1.shape)
     #log_Likelihood = exp
     return L
 
