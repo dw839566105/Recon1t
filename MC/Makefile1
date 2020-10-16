@@ -1,0 +1,8 @@
+radius:=$(shell seq -f '%.3f' 0 0.01 0.64)
+.PHONY: all
+
+all: $(radius)
+
+%:
+	python3 tpl.py $*
+

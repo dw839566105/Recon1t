@@ -22,7 +22,6 @@ from scipy.optimize import rosen_der
 from numpy.polynomial import legendre as LG
 import matplotlib.pyplot as plt
 from scipy.linalg import norm
-from numdifftools import Jacobian, Hessian
 
 np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
 

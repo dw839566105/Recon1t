@@ -298,7 +298,7 @@ def recon(fid, fout, *args):
             x0_in[0][2] = np.sum(pe_array*PMT_pos[:,1])/np.sum(pe_array)/shell
             x0_in[0][3] = np.sum(pe_array*PMT_pos[:,2])/np.sum(pe_array)/shell
             a = c2r(x0_in[0][1:4])
-            a[0] = a[0]/shell
+            a[0] = a[0]
 
             x0 = np.hstack((x0_in[0][0], a, x0_in[0][4]))
             result_in = minimize(Likelihood, x0, method='SLSQP',bounds=((E_min, E_max), (0, 1), (None, None), (None, None), (None, None)), args = (coeff_time_in, coeff_pe_in, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
@@ -316,12 +316,11 @@ def recon(fid, fout, *args):
             # outer recon
             # initial value
             tmp = result_in.x
-            x0_out = x0_in.copy()
-            x0_out[0] = tmp
-            x0_out[0][1]=0.92                
-            x0 =x0_out
-            # not added yet
-            x0 = np.hstack((x0_out[0][0], a, x0_out[0][4]))
+            x0_out = x0.copy()
+            x0_out = tmp
+            x0_out[1]=0.93                
+            x0_out[1:4]=c2r(np.array((0,0,-0.60))/0.65)
+            x0 = x0_out
             result_out = minimize(Likelihood, x0, method='SLSQP',bounds=((E_min, E_max), (0,1), (None, None), (None, None),(None, None)), args = (coeff_time_out, coeff_pe_out, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
 
             out2 = r2c(result_out.x[1:4]) * shell

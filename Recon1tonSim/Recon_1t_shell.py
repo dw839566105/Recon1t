@@ -28,7 +28,7 @@ c = 2.99792e8
 n = 1.48
 
 # boundaries
-shell = 0.65
+shell = 0.64
 
 def load_coeff():
     h = tables.open_file('../calib/PE_coeff_1t.h5','r')
@@ -101,12 +101,12 @@ def Likelihood_PE(vertex, *args):
         x = np.ones((30,cut))
     # legendre coeff by polynomials
     k = np.zeros(cut)
-
-    if(z>=bd):
-        k = LG.legval(z, coeff_pe_out.T)
-    else:
-        k = LG.legval(z, coeff_pe_in.T)
     
+    for z in np.arange(0,1,0.01):
+        if(z>=bd):
+            k = LG.legval(z, coeff_pe_out.T)
+        else:
+            k = LG.legval(z, coeff_pe_in.T)
     k[0] = vertex[0]
     expect = np.exp(np.dot(x,k))
     a1 = expect**y
@@ -348,6 +348,7 @@ def recon(fid, fout, *args):
             print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.2f, Likelihood: %+.2f' % (event_count, out2[0], out2[1], out2[2], norm(out2), result_out.fun))
             #print(event_count, result_out.x[1:4] * shell, np.sqrt(np.sum(result_out.x[1:4]**2)), result_out.fun)
             print('-'*60)
+            
         else:
             recondata['x_sph_in'] = 0
             recondata['y_sph_in'] = 0

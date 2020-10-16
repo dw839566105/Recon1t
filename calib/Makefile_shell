@@ -1,6 +1,6 @@
 .PHONY: all
 
-E:=8.0MeV_shell
+E:=reflection0.05_2MeV
 # 2.0MeV_dns: no dark noise, all PMTs are the same
 # 2.0MeV_dn: no dark noise, PMTs are different
 # 2.0MeV_xyz: dark noise thereshold 1
@@ -11,8 +11,8 @@ upper:=0.65
 lower:=0.01
 radius:=$(shell seq -f '%+.3f' $(upper) -0.01 $(lower))
 
-order:=90
-save_pe:=coeff_pe_1t_$(E)_$(order)_custom
+order:=30
+save_pe:=coeff_pe_1t_$(E)_$(order)
 save_time:=coeff_time_1t_$(E)
 
 src_pe:=$(radius:%=$(save_pe)/file_%.h5)
@@ -21,6 +21,6 @@ src_time:=$(radius:%=$(save_time)/file_%.h5)
 all: $(src_pe)
 $(save_pe)/file_%.h5:
 	mkdir -p $(save_pe)
-	nice -n 19 python3.6 PE_calib/main_calib_shellQ.py $* $(path) $@ $(order) > logs/PE$*.log
+	python3 PE_calib/main_calib_shell_smsQ.py $* $(path) $@ $(order) > logs/PE$*.log
 
 .SECONDARY:

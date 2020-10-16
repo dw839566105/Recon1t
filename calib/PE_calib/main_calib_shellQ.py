@@ -191,7 +191,7 @@ def readchain(radius, path, axis):
     #        axis: 'x' or 'y' or 'z', 'str'
     # output: the gathered result EventID, ChannelID, x, y, z
     '''
-    for i in np.arange(0, 300):
+    for i in np.arange(0, 5):
         if(i == 0):
             # filename = path + '1t_' + radius + '.h5'
             # eg: /mnt/stage/douwei/Simulation/1t_root/2.0MeV_xyz/1t_+0.030.h5
@@ -213,7 +213,7 @@ def readchain(radius, path, axis):
 
     return EventID, Q, x, y, z
     
-def main_Calib(radius, path, fout, cut_max, PMT_pos):
+def main_Calib(radius, path, fout, BeginOrder, EndOrder, Step, PMT_pos):
     '''
     # main program
     # input: radius: %+.3f, 'str' (in makefile, str is default)
@@ -243,11 +243,14 @@ def main_Calib(radius, path, fout, cut_max, PMT_pos):
         PMTNo = np.size(PMT_pos[:,0])
         PMT_pos_rep = np.tile(PMT_pos, (EventNo,1))
         vertex = np.repeat(x1, PMTNo, axis=0)/1e3
-
-        tmp_x_p, cos_theta = Legendre_coeff(PMT_pos_rep, vertex, cut_max)
+        tmp_x_p, cos_theta = Legendre_coeff(PMT_pos_rep, vertex, EndOrder)
+        #plt.hist(cos_theta,bins=100,weights=Q)
+        #plt.semilogy()
+        #plt.savefig('test.png')
+        #exit()
         print(f'use {time.time() - tmp} s')
         LegendreCoeff = tmp_x_p
-
+        
         # this part for later EM maybe
         '''
         LegendreCoeff = np.zeros((0,cut_max))           
@@ -258,29 +261,36 @@ def main_Calib(radius, path, fout, cut_max, PMT_pos):
         #print('total pe shape:', total_pe.shape)
         #print('Legendre coeff shape:',LegendreCoeff.shape)
         
-        for index, cut in enumerate(np.arange(2,cut_max,1)): # just take special values
+        for index, cut in enumerate(np.arange(BeginOrder, EndOrder, Step)): # just take special values
             theta0 = np.zeros(cut) # initial value
             if(index == 0):
                 theta0[0] = 0.8 + np.log(2) # intercept is much more important
             else:
-                theta0[:-1] = result.x
-            result = minimize(Calib, theta0, args = (Q, PMT_pos, cut, LegendreCoeff[:,0:cut])) 
+                theta0[:np.size(result.x)] = result.x
+            result = minimize(Calib, theta0, method='SLSQP', args = (Q, PMT_pos, cut, LegendreCoeff[:,0:cut]), tol=1e-12, options={'maxiter' : 1000})
             print('coeff:\n', result.x, '\n')
             y = Q
-            AIC = result.fun*2 + 2*(np.nansum(np.log(y)*y-y+np.log(y*(1+4*y*(1+2*y)))/6 + np.log(np.pi)/2)) + 2*cut
+            #AIC = result.fun*2 + 2*(np.nansum(np.log(y)*y-y+np.log(y*(1+4*y*(1+2*y)))/6 + np.log(np.pi)/2)) + 2*cut
+            AIC = result.fun*2 + 2*cut
+            print(sys.getsizeof(result.fun))
+            print(result.message, result.nit, result.success)
             print('AIC value:\n',AIC, '\n')
             print('='*100)
             out.create_dataset('coeff' + str(cut), data = result.x)
             out.create_dataset('AIC' + str(cut), data = AIC)
-            
-if len(sys.argv)!=5:
+print(len(sys.argv))
+if len(sys.argv)!=7:
     print("Wront arguments!")
-    print("Usage: python main_calib.py 'radius' 'path' outputFileName[.h5] Max_order")
+    print("Usage: python main_calib.py 'radius' 'path' outputFileName[.h5] BeginOrder EndOrder Step")
     sys.exit(1)
     
 PMT_pos = ReadPMT()
 # sys.argv[1]: '%s' radius
 # sys.argv[2]: '%s' path
 # sys.argv[3]: '%s' output
-# sys.argv[4]: '%d' cut
-main_Calib(sys.argv[1],sys.argv[2], sys.argv[3], eval(sys.argv[4]), PMT_pos)
+# sys.argv[4]: '%d' begin order
+# sys.argv[5]: '%d' end order
+# sys.argv[6]: '%d' step
+#
+#
+main_Calib(sys.argv[1], sys.argv[2], sys.argv[3], eval(sys.argv[4]), eval(sys.argv[5]), eval(sys.argv[6]), PMT_pos)

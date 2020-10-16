@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 import h5py
-
+from numpy.polynomial import legendre as LG
 def LoadDataPE_TW(path, radius, order):
     data = []
     filename = path + 'file_' + radius + '.h5'
@@ -25,8 +25,8 @@ def main_photon(path, order):
         coeff_pe = np.hstack((coeff_pe, coeff)) 
     coeff_pe = np.reshape(coeff_pe,(-1,np.size(rd)),order='F')
     return rd, coeff_pe
-def main(order=5, fit_order=10):
-    rd, coeff_pe = main_photon('coeff_pe_1t_8.0MeV_shell_1/',order)
+def main(order=15, fit_order=10):
+    rd, coeff_pe = main_photon('coeff_pe_1t_reflection0.00_30/',order)
     rd = np.array(rd)
     coeff_pe = np.array(coeff_pe)
     #coeff_pe[1][51:58] = np.interp(rd[51:58],np.array((rd[51], rd[57])), np.array((coeff_pe[1][51],coeff_pe[1][57])))
@@ -34,7 +34,7 @@ def main(order=5, fit_order=10):
     coeff_L_out = np.zeros((order, fit_order + 1))
     coeff_p_in = np.zeros((order, fit_order + 1))
     coeff_p_out = np.zeros((order, fit_order + 1))
-    bd = 0.88
+    bd = 0.91
     d = np.where(np.abs(rd-np.max(rd)*bd) == np.min(np.abs(rd-np.max(rd)*bd)))
 
     for i in np.arange(order):
@@ -45,8 +45,8 @@ def main(order=5, fit_order=10):
             w_out = np.ones_like(rd[index_out])
             w_in[-1] = 1000
             w_out[0] = 1000
-            if(i==0):
-                w_in[-2:] = 1000
+            #if(i==0):
+            #    w_in[-2:] = 1000
             # Legendre coeff
             B_in, tmp = np.polynomial.legendre.legfit(np.hstack((rd[index_in]/np.max(rd),-rd[index_in]/np.max(rd))), \
                                                       np.hstack((coeff_pe[i,index_in], coeff_pe[i,index_in])), \
@@ -95,11 +95,25 @@ def main(order=5, fit_order=10):
         plt.figure(num = i+1, dpi = 300)
         #plt.plot(rd, np.hstack((y2_in, y2_out[1:])), label='poly')
         plt.plot(rd, coeff_pe[i], 'r.', label='real',linewidth=2)
-        plt.plot(rd, np.hstack((y1_in, y1_out[1:])), label = 'Legendre')
+        #plt.plot(rd, np.hstack((y1_in, y1_out[1:])), label = 'Legendre')
+        plt.axvline(rd[index_out][0])
+        plt.plot(rd[index_in], np.hstack((y1_in)), label = 'Legendre')
+        plt.plot(rd[index_out], np.hstack((y1_out)), label = 'Legendre')
+        
+        tmp = []
+        for z in np.arange(0,0.64,0.001):
+            if(z/0.64>=bd):
+                k = LG.legval(z/0.64, B_out)
+            else:
+                k = LG.legval(z/0.64, B_in)
+            #print(k)
+            tmp.append(k)
+        tmp = np.array(tmp)
+        plt.plot(np.arange(0,0.64,0.001), tmp)
         plt.xlabel('radius/m')
         plt.ylabel('PE Legendre coefficients')
         plt.title('%d-th, max fit = %d' %(i, fit_order))
-        plt.legend()
+        #plt.legend()
         plt.savefig('coeff_PE_%d.png' % i)
     return coeff_L_in, coeff_L_out, coeff_p_in, coeff_p_out, bd
 

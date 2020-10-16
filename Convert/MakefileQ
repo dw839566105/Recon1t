@@ -1,4 +1,5 @@
-srcL:=$(wildcard /mnt/stage/douwei/Simulation/1t_root/shell_200000/*.root)
+srcL:=$(wildcard /mnt/stage/douwei/Simulation/1t_root/*.root)
+#srcL:=$(wildcard /home/douwei/JSAP/DetectorStructure/output/Reflection0.05/*.root)
 #srcL:=$(wildcard /home/douwei/JSAP/DetectorStructure/output/1t_calib/*.root)
 dstL:=$(srcL:%.root=%Q.h5)
 

@@ -1,12 +1,12 @@
 .PHONY: all
 
-order:=15
-E:=2.0MeV_dns
-prog:=Recon_1t_shell_cubic
+order:=20
+E:=ground_axis
+prog:=Recon_1t
 path:=/mnt/stage/douwei/Simulation/1t_root/$(E)/
-save:=result_1t_$(E)_$(prog)_2
+save:=result_1t_$(E)_$(prog)
 #sim:=$(wildcard $(path)1t_*.root)
-sim:=$(wildcard $(path)1t_??.??0_?.root)
+sim:=$(wildcard $(path)1t_??.??0_z.root)
 dst:=$(sim:$(path)%.root=$(save)/%.h5)
 all:$(dst)
 

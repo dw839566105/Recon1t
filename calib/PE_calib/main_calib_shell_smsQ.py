@@ -187,7 +187,7 @@ def readchain(radius, path, axis):
     #        axis: 'x' or 'y' or 'z', 'str'
     # output: the gathered result EventID, ChannelID, x, y, z
     '''
-    for i in np.arange(0, 1):
+    for i in np.arange(0, 15):
         if(i == 0):
             # filename = path + '1t_' + radius + '.h5'
             # eg: /mnt/stage/douwei/Simulation/1t_root/2.0MeV_xyz/1t_+0.030.h5
@@ -254,7 +254,7 @@ def main_Calib(radius, path, fout, cut_max, PMT_pos):
         #print('total pe shape:', total_pe.shape)
         #print('Legendre coeff shape:',LegendreCoeff.shape)
         
-        for cut in np.arange(2,cut_max,1): # just take special values
+        for cut in np.arange(5,cut_max,10): # just take special values
             X = LegendreCoeff[:,0:cut]
             y = Q
             print(X.shape, y.shape)
@@ -266,7 +266,6 @@ def main_Calib(radius, path, fout, cut_max, PMT_pos):
             std = result.bse
             print(result.aic)
             print(result.bic)
-            exit()
             out.create_dataset('coeff' + str(cut), data = coeff)
             out.create_dataset('std' + str(cut), data = std)
             out.create_dataset('AIC' + str(cut), data = L)

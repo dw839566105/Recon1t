@@ -62,7 +62,7 @@ def Calib(theta, *args):
     T_i = np.dot(LegendreCoeff, theta)
     # quantile regression
     # quantile = 0.01
-    L0 = Likelihood_quantile(y, T_i, 0.01, 0.3)
+    L0 = Likelihood_quantile(y, T_i, 0.1, 2.6)
     # L = L0
     L = L0 + np.sum(np.abs(theta))
     return L0
@@ -249,7 +249,7 @@ def main_Calib(radius, path, fout, cut_max, PMT_pos):
         total_pe = np.zeros(np.size(PMT_pos[:,0])*size)
         print('total event: %d' % np.size(np.unique(EventID)), flush=True)
         
-        input_time = PETime
+        input_time = PulseTime
         # input_time = PulseTime - photonTime
         
         print('begin processing legendre coeff', flush=True)

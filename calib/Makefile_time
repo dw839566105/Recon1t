@@ -21,6 +21,6 @@ all: $(src_time)
 
 $(save_time)/file_%.h5:
 	mkdir -p $(save_time)
-	python3 Time_calib/main_calib_shell.py $* $(path) $@ $(order) > logs/Time$*.log
+	python3 Time_calib/main_calib_shell3.py $* $(path) $@ $(order) > logs/Time$*.log
 
 .SECONDARY:
