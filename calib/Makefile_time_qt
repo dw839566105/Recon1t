@@ -13,7 +13,7 @@ upper:=0.65
 lower:=0.00
 radius:=$(shell seq -f '%+.3f' $(upper) -0.01 $(lower))
 
-save_time:=coeff_time_1t_$(E)_$(qt)_1
+save_time:=coeff_time_1t_$(E)_$(qt)_2
 
 src_time:=$(radius:%=$(save_time)/file_%.h5)
 
@@ -23,6 +23,6 @@ all: $(src_time)
 
 $(save_time)/file_%.h5:
 	mkdir -p $(save_time)
-	nice -n 19 python3 Time_calib/main_calib_shell1.py $* $(path) $@ $(order) $(qt) > logs/Time$*.log
+	nice -n 0 python3 Time_calib/main_calib_shell_sk.py $* $(path) $@ $(order) $(qt) > logs/Time$*.log
 
 .SECONDARY:

@@ -18,7 +18,6 @@ import scipy, h5py
 import tables
 import sys
 import time
-import pandas as pd
 from scipy.optimize import minimize
 from scipy.optimize import rosen_der
 from numpy.polynomial import legendre as LG
@@ -26,10 +25,13 @@ import matplotlib.pyplot as plt
 from scipy.linalg import norm
 from sklearn.linear_model import Lasso
 from sklearn.linear_model import TweedieRegressor
-from sklearn.ensemble import GradientBoostingRegressor
-import statsmodels.formula.api as smf
+import statsmodels.api as sm
+import functools
+import cupy as cp
+print = functools.partial(print, flush=True)
+
+
 np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
-np.set_printoptions(precision=3)
 
 def LoadBase():
     '''
@@ -60,25 +62,35 @@ def ReadPMT():
     return PMT_pos
 
 def Calib(theta, *args):
-    EventID, ChannelID, Pulse_time, PMT_pos, cut, LegendreCoeff, qt, ts = args
-    y = Pulse_time
-    T_i = np.dot(LegendreCoeff, theta)
-    # quantile regression
-    # quantile = 0.01
-    L0 = Likelihood_quantile(y[:,0], T_i, qt, ts, EventID)
-
-    # L = L0
-    L = L0 + np.sum(np.abs(theta))
+    '''
+    # core of this program
+    # input: theta: parameter to optimize
+    #      *args: include 
+          total_pe: [event No * PMT size] * 1 vector ( used to be a 2-d matrix)
+          PMT_pos: PMT No * 3
+          cut: cut off of Legendre polynomial
+          LegendreCoeff: Legendre value of the transformed PMT position (Note, it is repeated to match the total_pe)
+    # output: L : likelihood value
+    '''
+    total_pe, PMT_pos, cut, LegendreCoeff = args
+    y = total_pe
+    #corr = np.dot(LegendreCoeff, theta) + np.tile(base, (1, np.int(np.size(LegendreCoeff)/np.size(base)/np.size(theta))))[0,:]
+    corr = cp.dot(LegendreCoeff, cp.asarray(theta))
+    corr = corr.get()
+    # Poisson regression as a log likelihood
+    # https://en.wikipedia.org/wiki/Poisson_regression
+    a = y*corr - np.exp(corr)
+    
+    #const = np.log(scipy.special.factorial(n))
+    L0 = -np.sum(a)
+    # how to add the penalty? see
+    # http://jmlr.csail.mit.edu/papers/volume17/15-021/15-021.pdf
+    # the following 2 number is just a good attempt
+    # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ElasticNet.html#sklearn.linear_model.ElasticNet
+    # rho = 1
+    # alpha = 0
+    # L = L0/(2*np.size(y)) + alpha * rho * norm(theta,1) + 1/2* alpha * (1-rho) * norm(theta,2) # elastic net
     return L0
-
-def Likelihood_quantile(y, T_i, qt, ts, EventID):
-    R = (1-qt)*(T_i-y)*(y<T_i) + (qt)*(y-T_i)*(y>=T_i)
-    H,edges =np.histogram(EventID, weights = R, bins = np.hstack((np.unique(EventID), np.max(EventID)+1)))
-    Q = np.bincount(EventID)
-    #L0 = 0
-    L = Q[1:]*np.log(qt*(1-qt)/ts) - H/ts
-    L0 = np.nansum(L)
-    return -L0
 
 def Legendre_coeff(PMT_pos_rep, vertex, cut):
     '''
@@ -161,45 +173,16 @@ def readfile(filename):
     print(filename, flush=True)
     truthtable = h1.root.GroundTruth
     EventID = truthtable[:]['EventID']
-    ChannelID = truthtable[:]['ChannelID']
-    PETime = truthtable[:]['PETime']
-    photonTime = truthtable[:]['photonTime']
-    PulseTime = truthtable[:]['PulseTime']
-    dETime = truthtable[:]['dETime']
-    
+    Q = h1.root.PETruthData[:]['Q']
+
     x = h1.root.TruthData[:]['x']
     y = h1.root.TruthData[:]['y']
     z = h1.root.TruthData[:]['z']
     h1.close()
+    if(np.float(np.size(np.unique(EventID)))!= Q.shape[0]/30):
+        exit()
     
-    # The following part is to avoid trigger by dn(dark noise) since threshold is 1
-    # These thiggers will be recorded as (0,0,0) by uproot
-    # but in root, the truth and the trigger is not one to one
-    # If the simulation vertex is (0,0,0), it is ambiguous, so we need cut off (0,0,0) or use data without dn
-    # If the simulation set -dn 0, whether the program will get into the following part is not tested
-    
-    dn = np.where((x==0) & (y==0) & (z==0))
-    dn_index = (x==0) & (y==0) & (z==0)
-    pin = dn[0] + np.min(EventID)
-    if(np.sum(x**2+y**2+z**2>0.1)>0):
-        cnt = 0        
-        for ID in np.arange(np.min(EventID), np.max(EventID)+1):
-            if ID in pin:
-                cnt = cnt+1
-                #print('Trigger No:', EventID[EventID==ID])
-                #print('Fired PMT', ChannelID[EventID==ID])
-                
-                ChannelID = ChannelID[~(EventID == ID)]
-                EventID = EventID[~(EventID == ID)]              
-                ChannelID = ChannelID[~(EventID == ID)]
-                PETime = PETime[~(EventID == ID)]
-                photonTime = photonTime[~(EventID == ID)]
-                PulseTime = PulseTime[~(EventID == ID)]
-                dETime = dETime[~(EventID == ID)]
-        x = x[~dn_index]
-        y = y[~dn_index]
-        z = z[~dn_index]
-    return (EventID, ChannelID, PETime, photonTime, PulseTime, dETime, x, y, z)
+    return (EventID, Q, x, y, z)
     
 def readchain(radius, path, axis):
     '''
@@ -210,34 +193,29 @@ def readchain(radius, path, axis):
     #        axis: 'x' or 'y' or 'z', 'str'
     # output: the gathered result EventID, ChannelID, x, y, z
     '''
-    for i in np.arange(0, 20):
+    for i in np.arange(0, 10):
         if(i == 0):
             # filename = path + '1t_' + radius + '.h5'
             # eg: /mnt/stage/douwei/Simulation/1t_root/2.0MeV_xyz/1t_+0.030.h5
             filename = '%s1t_%sQ.h5' % (path, radius)
-            EventID, ChannelID, PETime, photonTime, PulseTime, dETime, x, y, z = readfile(filename)
+            EventID, Q, x, y, z = readfile(filename)
         else:
             try:
                 # filename = path + '1t_' + radius + '_n.h5'
                 # eg: /mnt/stage/douwei/Simulation/1t_root/2.0MeV_xyz/1t_+0.030_1.h5
                 filename = '%s1t_%s_%dQ.h5' % (path, radius, i)
-                EventID1, ChannelID1, PETime1, photonTime1, PulseTime1, dETime1, x1, y1, z1 = readfile(filename)
+                EventID1, Q1, x1, y1, z1 = readfile(filename)
                 EventID = np.hstack((EventID, EventID1))
-                ChannelID = np.hstack((ChannelID, ChannelID1))
-                PETime = np.hstack((PETime,PETime1))
-                photonTime = np.hstack((photonTime, photonTime1))
-                PulseTime = np.hstack((PulseTime, PulseTime1))
-                dETime = np.hstack((dETime, dETime1))
-
+                Q = np.hstack((Q, Q1))
                 x = np.hstack((x, x1))
                 y = np.hstack((y, y1))
                 z = np.hstack((z, z1))
             except:
                 pass
 
-    return EventID, ChannelID, PETime, photonTime, PulseTime, dETime, x, y, z
+    return EventID, Q, x, y, z
     
-def main_Calib(radius, path, fout, cut_max, qt, PMT_pos):
+def main_Calib(radius, path, fout, cut_max, PMT_pos):
     '''
     # main program
     # input: radius: %+.3f, 'str' (in makefile, str is default)
@@ -249,46 +227,57 @@ def main_Calib(radius, path, fout, cut_max, qt, PMT_pos):
     print('begin reading file', flush=True)
     #filename = '/mnt/stage/douwei/Simulation/1t_root/1.5MeV_015/1t_' + radius + '.h5'
     with h5py.File(fout,'w') as out:
-        EventID, ChannelID, PETime, photonTime, PulseTime, dETime, xx, yx, zx = readchain(radius, path,'+')
+        # read files by table
+        # we want to use 6 point on different axis to calib
+        # +x, -x, +y, -y, +z, -z or has a little lean (z axis is the worst! use (0,2,10) instead) 
+        # In ceter, no positive or negative, the read program should be changed
+        # In simulation, the (0,0,0) saved as '*-0.000.h5' is negative
+        # positive direction
+        EventID, Q, xx, yx, zx = readchain(radius, path,'+')
         x1 = np.vstack((xx, yx, zx)).T
-        size = np.size(np.unique(EventID))
-        total_pe = np.zeros(np.size(PMT_pos[:,0])*size)
+
         print('total event: %d' % np.size(np.unique(EventID)), flush=True)
-        
-        
+
         print('begin processing legendre coeff', flush=True)
         # this part for the same vertex
         tmp = time.time()
         EventNo = np.size(np.unique(EventID))
         PMTNo = np.size(PMT_pos[:,0])
-        counts = np.bincount(EventID)
-        counts = counts[counts!=0]
-        PMT_pos_rep = PMT_pos[ChannelID]
-        vertex = np.repeat(x1, counts, axis=0)
-        print(PMT_pos_rep.shape, vertex.shape)
+        PMT_pos_rep = np.tile(PMT_pos, (EventNo,1))
+        vertex = np.repeat(x1, PMTNo, axis=0)/1e3
+
         tmp_x_p, cos_theta = Legendre_coeff(PMT_pos_rep, vertex, cut_max)
         print(f'use {time.time() - tmp} s')
-        LegendreCoeff = tmp_x_p
-        PulseTime = np.atleast_2d(PulseTime).T
-        h = tables.open_file('./coeff_time_1t_8.0MeV_shell_%s/file_%s.h5' % (qt, radius))
-        res = h.root.coeff5[:]
-        tau = eval(qt)
-        ts_list = np.linspace(5,50,10)
-        L = np.zeros_like(ts_list)
-        for index, ts in enumerate(ts_list):
-            L0 = Calib(res, *(EventID, ChannelID, PulseTime, PMT_pos, 5, LegendreCoeff[:,0:5], tau, ts*tau))
-            print(f'{tau}, {ts*tau}, :{L0}')
-            L[index] = L0
-        out.create_dataset('Likelihood' , data = L)
-        print('-'*80)
+        LegendreCoeff = cp.asarray(tmp_x_p)
+
+        # this part for later EM maybe
+        '''
+        LegendreCoeff = np.zeros((0,cut_max))           
+        for k in np.arange(size):
+            LegendreCoeff = np.vstack((LegendreCoeff,Legendre_coeff(PMT_pos,np.array((x[k], y[k], z[k]))/1e3, cut_max)))
+       ''' 
+        #print('begin get coeff')
+        #print('total pe shape:', total_pe.shape)
+        #print('Legendre coeff shape:',LegendreCoeff.shape)
         
-print(len(sys.argv))
-for i in np.arange(len(sys.argv)):
-    print(sys.argv[i])
-    
-if len(sys.argv)!=6:
+        for index, cut in enumerate(np.arange(2,cut_max,1)): # just take special values
+            theta0 = np.zeros(cut) # initial value
+            if(index == 0):
+                theta0[0] = 0.8 + np.log(2) # intercept is much more important
+            else:
+                theta0[:-1] = result.x
+            result = minimize(Calib, theta0, method='SLSQP', args = (Q, PMT_pos, cut, LegendreCoeff[:,0:cut]), tol=1e-12)
+            print('coeff:\n', result.x, '\n')
+            y = Q
+            AIC = result.fun*2 + 2*(np.nansum(np.log(y)*y-y+np.log(y*(1+4*y*(1+2*y)))/6 + np.log(np.pi)/2)) + 2*cut
+            print('AIC value:\n',AIC, '\n')
+            print('='*100)
+            out.create_dataset('coeff' + str(cut), data = result.x)
+            out.create_dataset('AIC' + str(cut), data = AIC)
+            
+if len(sys.argv)!=5:
     print("Wront arguments!")
-    print("Usage: python main_calib.py 'radius' 'path' outputFileName[.h5] Max_order qt")
+    print("Usage: python main_calib.py 'radius' 'path' outputFileName[.h5] Max_order")
     sys.exit(1)
     
 PMT_pos = ReadPMT()
@@ -296,5 +285,4 @@ PMT_pos = ReadPMT()
 # sys.argv[2]: '%s' path
 # sys.argv[3]: '%s' output
 # sys.argv[4]: '%d' cut
-# sys.argv[5]: '%g' quantile regression
-main_Calib(sys.argv[1],sys.argv[2], sys.argv[3], eval(sys.argv[4]), sys.argv[5], PMT_pos)
+main_Calib(sys.argv[1],sys.argv[2], sys.argv[3], eval(sys.argv[4]), PMT_pos)

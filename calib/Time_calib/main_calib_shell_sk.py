@@ -29,7 +29,6 @@ from sklearn.linear_model import TweedieRegressor
 from sklearn.ensemble import GradientBoostingRegressor
 import statsmodels.formula.api as smf
 np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
-np.set_printoptions(precision=3)
 
 def LoadBase():
     '''
@@ -60,25 +59,22 @@ def ReadPMT():
     return PMT_pos
 
 def Calib(theta, *args):
-    EventID, ChannelID, Pulse_time, PMT_pos, cut, LegendreCoeff, qt, ts = args
-    y = Pulse_time
+    ChannelID, flight_time, PMT_pos, cut, LegendreCoeff = args
+    y = flight_time
     T_i = np.dot(LegendreCoeff, theta)
     # quantile regression
     # quantile = 0.01
-    L0 = Likelihood_quantile(y[:,0], T_i, qt, ts, EventID)
-
+    L0 = Likelihood_quantile(y, T_i, 0.01, 0.3)
     # L = L0
     L = L0 + np.sum(np.abs(theta))
     return L0
 
-def Likelihood_quantile(y, T_i, qt, ts, EventID):
-    R = (1-qt)*(T_i-y)*(y<T_i) + (qt)*(y-T_i)*(y>=T_i)
-    H,edges =np.histogram(EventID, weights = R, bins = np.hstack((np.unique(EventID), np.max(EventID)+1)))
-    Q = np.bincount(EventID)
-    #L0 = 0
-    L = Q[1:]*np.log(qt*(1-qt)/ts) - H/ts
-    L0 = np.nansum(L)
-    return -L0
+def Likelihood_quantile(y, T_i, tau, ts):
+    less = T_i[y<T_i] - y[y<T_i]
+    more = y[y>=T_i] - T_i[y>=T_i]
+    R = (1-tau)*np.sum(less) + tau*np.sum(more)
+    #log_Likelihood = exp
+    return R
 
 def Legendre_coeff(PMT_pos_rep, vertex, cut):
     '''
@@ -255,6 +251,8 @@ def main_Calib(radius, path, fout, cut_max, qt, PMT_pos):
         total_pe = np.zeros(np.size(PMT_pos[:,0])*size)
         print('total event: %d' % np.size(np.unique(EventID)), flush=True)
         
+        input_time = PETime
+        # input_time = PulseTime - photonTime
         
         print('begin processing legendre coeff', flush=True)
         # this part for the same vertex
@@ -270,22 +268,36 @@ def main_Calib(radius, path, fout, cut_max, qt, PMT_pos):
         print(f'use {time.time() - tmp} s')
         LegendreCoeff = tmp_x_p
         PulseTime = np.atleast_2d(PulseTime).T
-        h = tables.open_file('./coeff_time_1t_8.0MeV_shell_%s/file_%s.h5' % (qt, radius))
-        res = h.root.coeff5[:]
-        tau = eval(qt)
-        ts_list = np.linspace(5,50,10)
-        L = np.zeros_like(ts_list)
-        for index, ts in enumerate(ts_list):
-            L0 = Calib(res, *(EventID, ChannelID, PulseTime, PMT_pos, 5, LegendreCoeff[:,0:5], tau, ts*tau))
-            print(f'{tau}, {ts*tau}, :{L0}')
-            L[index] = L0
-        out.create_dataset('Likelihood' , data = L)
-        print('-'*80)
         
-print(len(sys.argv))
-for i in np.arange(len(sys.argv)):
-    print(sys.argv[i])
-    
+        bins = np.linspace(-1,1,100)
+        index = np.digitize(cos_theta, bins)
+        tmp_qt = []
+        for ii, i in enumerate(np.unique(index)):
+            tmp_qt.append(np.quantile(PulseTime[index==i],qt))
+        tmp_qt = np.array(tmp_qt)
+        str_form = 'y ~ x1 + x2 + x3'
+        data = pd.DataFrame(data = np.hstack([LegendreCoeff[:,0:4], PulseTime]), columns = ["x0", "x1", "x2", "x3","y"])
+        for cut in np.arange(5,cut_max,1):
+            key = "x%d" % (cut - 1)
+            data[key] = LegendreCoeff[:,cut-1]
+            tmp = time.time()
+            str_form = str_form + ' +x%d' % (cut-1)
+            mod = smf.quantreg(str_form, data)
+            res = mod.fit(q=qt)
+            print(res.summary())
+            print(f'use {time.time() - tmp} s')
+            out.create_dataset('coeff' + str(cut), data = res.params)
+            print(res.params)
+            plt.figure()
+            k = LG.legval(bins, res.params)
+            plt.plot(bins, k, 'r-', label='fit')
+            print(tmp_qt.shape)
+            plt.plot(bins[1:], tmp_qt,'.',label='raw data')
+            plt.xlabel('cos theta')
+            plt.ylabel('expected pulse time')
+            plt.title('qt = %.2f' % qt)
+            plt.legend()
+            plt.savefig('Radius_%.2f_%d.png' % (eval(radius), cut))
 if len(sys.argv)!=6:
     print("Wront arguments!")
     print("Usage: python main_calib.py 'radius' 'path' outputFileName[.h5] Max_order qt")
@@ -297,4 +309,4 @@ PMT_pos = ReadPMT()
 # sys.argv[3]: '%s' output
 # sys.argv[4]: '%d' cut
 # sys.argv[5]: '%g' quantile regression
-main_Calib(sys.argv[1],sys.argv[2], sys.argv[3], eval(sys.argv[4]), sys.argv[5], PMT_pos)
+main_Calib(sys.argv[1],sys.argv[2], sys.argv[3], eval(sys.argv[4]), eval(sys.argv[5]), PMT_pos)
