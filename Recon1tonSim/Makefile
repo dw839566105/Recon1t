@@ -1,12 +1,12 @@
 .PHONY: all
 
-order:=20
+order:=100
 E:=ground_axis
-prog:=Recon_1t
+prog:=Recon_1t_new
 path:=/mnt/stage/douwei/Simulation/1t_root/$(E)/
 save:=result_1t_$(E)_$(prog)
 #sim:=$(wildcard $(path)1t_*.root)
-sim:=$(wildcard $(path)1t_??.??0_z.root)
+sim:=$(wildcard $(path)1t_??.??0_?.root)
 dst:=$(sim:$(path)%.root=$(save)/%.h5)
 all:$(dst)
 

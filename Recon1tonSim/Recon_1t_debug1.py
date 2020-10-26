@@ -71,7 +71,7 @@ def Likelihood(vertex, *args):
     '''
     coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe = args
     L1 = Likelihood_PE(vertex, *(coeff_pe, PMT_pos, pe_array, cut_pe))
-    #L2 = Likelihood_Time(vertex, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time))
+    L2 = Likelihood_Time(vertex, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time))
     return L1
 
 def Likelihood_PE(vertex, *args):
@@ -79,20 +79,11 @@ def Likelihood_PE(vertex, *args):
     y = event_pe
     
     z = abs(vertex[1])
-    if z > 1-1e-3:
-        z = np.sign(z)-1e-3
-            
-    if z<1e-3:
-        # assume (0,0,1)
-        # cos_theta = PMT_pos[:,2] / norm(PMT_pos,axis=1)
-        vertex[1] = 1e-3
-        z = 1e-3
-        v = r2c(vertex[1:4])
-        cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
-    else:
-        v = r2c(vertex[1:4])
-        cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
-    
+    if np.abs(z) > 1-1e-3:
+        z = np.sign(z)*(1-1e-3)
+    v = r2c(vertex[1:4])
+    cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
+    cos_theta = np.nan_to_num(cos_theta)
     size = np.size(PMT_pos[:,0])
     
     c = np.diag((np.ones(cut)))
@@ -122,6 +113,45 @@ def Likelihood_PE(vertex, *args):
         exit()
     return L
 
+def Likelihood_PE_test(vertex, *args):
+    coeff, PMT_pos, event_pe, cut = args
+    y = event_pe
+    
+    z = abs(vertex[1])
+    if np.abs(z) > 1-1e-3:
+        z = np.sign(z)*(1-1e-3)
+    v = r2c(vertex[1:4])
+    cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
+    cos_theta = np.nan_to_num(cos_theta)
+    size = np.size(PMT_pos[:,0])
+    
+    c = np.diag((np.ones(cut)))
+    x = LG.legval(cos_theta, c).T
+    
+    k = np.zeros(cut)
+    k = LG.legval(z, coeff_pe.T)
+    
+    k[0] = vertex[0]
+    expect = np.exp(np.dot(x,k))
+    a1 = expect**y
+    a2 = np.exp(-expect)
+    a1[(a1<1e-20) & (np.isnan(a1))] = 1e-20
+    a1[(a1>1e50) & (np.isinf(a1))] = 1e50
+    a2[(a2<1e-20) & (np.isnan(a2))] = 1e-20
+    a2[(a2>1e50) & (np.isinf(a2))] = 1e50
+    
+    L = - np.sum(np.sum(np.log(a1*a2)))
+    if(np.isinf(L) or L>1e20):
+        L = 1e20
+
+    if(np.isnan(L)):
+        print(L, a1, a2)
+        print(z, expect)
+        print(event_pe)
+        print(vertex)
+        exit()
+    return L, expect
+
 def Likelihood_Time(vertex, *args):
     coeff, PMT_pos, fired, time, cut = args
     y = time
@@ -129,18 +159,8 @@ def Likelihood_Time(vertex, *args):
     z = abs(vertex[1])
     if z > 1:
         z = np.sign(z)-1e-6
-
-    if z<1e-3:
-        # assume (0,0,1)
-        # cos_theta = PMT_pos[:,2] / norm(PMT_pos,axis=1)
-        vertex[1] = 1e-3
-        z = 1e-3
-        v = r2c(vertex[1:4])
-        cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
-    else:
-        v = r2c(vertex[1:4])
-        cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
-    # accurancy and nan value
+    v = r2c(vertex[1:4])
+    cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
     cos_theta = np.nan_to_num(cos_theta)
     cos_theta[cos_theta>1] = 1
     cos_theta[cos_theta<-1] =-1
@@ -160,6 +180,35 @@ def Likelihood_Time(vertex, *args):
     L = np.nansum(Likelihood_quantile(y, T_i[:,0], 0.1, 2.6))
     #L = - np.nansum(TimeProfile(y, T_i[:,0]))
     return L
+
+def Likelihood_Time_test(vertex, *args):
+    coeff, PMT_pos, fired, time, cut = args
+    y = time
+    # fixed axis
+    z = abs(vertex[1])
+    if z > 1:
+        z = np.sign(z)-1e-6
+    v = r2c(vertex[1:4])
+    cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
+    cos_theta = np.nan_to_num(cos_theta)
+    cos_theta[cos_theta>1] = 1
+    cos_theta[cos_theta<-1] =-1
+
+    cos_total = cos_theta[fired]
+    
+    size = np.size(cos_total)
+    
+    c = np.diag((np.ones(cut)))
+    x = LG.legval(cos_total, c).T
+
+    # legendre coeff by polynomials
+    k = np.zeros((1,cut))
+    k[0] = LG.legval(z, coeff_time.T)
+    k[0,0] = vertex[4]
+    T_i = np.dot(x, np.transpose(k))
+    L = np.nansum(Likelihood_quantile(y, T_i[:,0], 0.1, 2.6))
+    #L = - np.nansum(TimeProfile(y, T_i[:,0]))
+    return L, T_i[:,0]
 
 def Likelihood_quantile(y, T_i, tau, ts):
     #less = T_i[y<T_i] - y[y<T_i]
@@ -271,7 +320,7 @@ def recon(fid, fout, *args):
                 fired_PMT = np.hstack((fired_PMT, ch*np.ones(np.size(pk))))
             except:
                 pass
-        if (np.sum(pe_array)!=0) & (event_count==149):
+        if (np.sum(pe_array)!=0) & (event_count==338):
             for ii in np.arange(np.size(pe_array)):
                 truthdata['pes'] = pe_array[ii]
                 truthdata.append()
@@ -295,12 +344,12 @@ def recon(fid, fout, *args):
             # initial value
             x0_in = np.zeros((1,5))
             x0_in[0][0] = 0.8 + np.log(np.sum(pe_array)/60)
-            x0_in[0][4] = np.quantile(time_array,0.05)
+            x0_in[0][4] = np.quantile(time_array,0.1)
 
             x0_in[0][1:4] = bins[index]/1000/shell
             a = c2r(x0_in[0][1:4])
             x0_in = np.hstack((x0_in[0][0], a, x0_in[0][4]))
-            result_in = minimize(Likelihood, x0_in, method='SLSQP',bounds=((E_min, E_max), (-1, 1), (None, None), (None, None), (None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
+            result_in = minimize(Likelihood, x0_in, method='SLSQP',bounds=((E_min, E_max), (0, 1), (None, None), (None, None), (None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
 
             # new added avoid boundry:
             in2 = r2c(result_in.x[1:4])*shell
@@ -330,7 +379,7 @@ def recon(fid, fout, *args):
             
             x0_truth = x0_in.copy()
             x0_truth[1:4]=c2r(np.array((0,0,0.01/0.65)))
-            result_truth = minimize(Likelihood, x0_truth, method='SLSQP',bounds=((E_min, E_max), (-1,1), (None, None), (None, None),(None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
+            result_truth = minimize(Likelihood, x0_truth, method='SLSQP',bounds=((E_min, E_max), (0, 1), (None, None), (None, None),(None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
 
             truth2 = r2c(result_truth.x[1:4]) * shell
             print('-'*60)
@@ -347,6 +396,28 @@ def recon(fid, fout, *args):
             print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.2f, Likelihood: %+.6f' % (event_count, truth2[0], truth2[1], truth2[2], norm(truth2), result_truth.fun))
             #print(event_count, result_out.x[1:4] * shell, np.sqrt(np.sum(result_out.x[1:4]**2)), result_out.fun)
             print('-'*60)
+            
+            print(pe_array)
+            print(time_array)
+            print(fired_PMT)
+            '''
+            plt.figure()
+            plt.plot(PMT_pos[fired_PMT][:,2], time_array, '.')
+            plt.savefig('test.png')
+            plt.figure()
+            #print(np.digitize(PMT_pos[:,2],bins = np.linspace(-1,1,5)))
+            plt.plot(PMT_pos[:,2], pe_array, '.')
+            plt.savefig('test1.png')
+            '''
+            print('='*60)
+            L, pred_pe_in = Likelihood_PE_test(result_in.x, *(coeff_pe, PMT_pos, pe_array, cut_pe))
+            print(pred_pe_in)
+            L, pred_pe_out = Likelihood_PE_test(result_out.x, *(coeff_pe, PMT_pos, pe_array, cut_pe))
+            print(pred_pe_out)
+            L, pred_time_in = Likelihood_Time_test(result_in.x, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time))
+            print(pred_time_in)
+            L, pred_time_out = Likelihood_Time_test(result_out.x, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time))
+            print(pred_time_out)
             break
         else:
             recondata['x_sph_in'] = 0

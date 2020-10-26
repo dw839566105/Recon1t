@@ -71,8 +71,8 @@ def Likelihood(vertex, *args):
     '''
     coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe = args
     L1 = Likelihood_PE(vertex, *(coeff_pe, PMT_pos, pe_array, cut_pe))
-    #L2 = Likelihood_Time(vertex, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time))
-    return L1
+    L2 = Likelihood_Time(vertex, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time))
+    return L1 + L2
 
 def Likelihood_PE(vertex, *args):
     coeff, PMT_pos, event_pe, cut = args
@@ -271,7 +271,7 @@ def recon(fid, fout, *args):
                 fired_PMT = np.hstack((fired_PMT, ch*np.ones(np.size(pk))))
             except:
                 pass
-        if (np.sum(pe_array)!=0) & (event_count==149):
+        if np.sum(pe_array)!=0:
             for ii in np.arange(np.size(pe_array)):
                 truthdata['pes'] = pe_array[ii]
                 truthdata.append()
@@ -300,7 +300,7 @@ def recon(fid, fout, *args):
             x0_in[0][1:4] = bins[index]/1000/shell
             a = c2r(x0_in[0][1:4])
             x0_in = np.hstack((x0_in[0][0], a, x0_in[0][4]))
-            result_in = minimize(Likelihood, x0_in, method='SLSQP',bounds=((E_min, E_max), (-1, 1), (None, None), (None, None), (None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
+            result_in = minimize(Likelihood, x0_in, method='SLSQP',bounds=((E_min, E_max), (0, 1), (None, None), (None, None), (None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
 
             # new added avoid boundry:
             in2 = r2c(result_in.x[1:4])*shell
@@ -315,7 +315,6 @@ def recon(fid, fout, *args):
             # initial value
             x0_out = x0_in.copy()
             x0_out[1]=0.92
-            #x0_out[1:4] = c2r(np.array((0,0,0.01/0.65)))
             result_out = minimize(Likelihood, x0_out, method='SLSQP',bounds=((E_min, E_max), (0,1), (None, None), (None, None),(None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
 
             out2 = r2c(result_out.x[1:4]) * shell
@@ -329,11 +328,13 @@ def recon(fid, fout, *args):
             #### truth
             
             x0_truth = x0_in.copy()
-            x0_truth[1:4]=c2r(np.array((0,0,0.01/0.65)))
-            result_truth = minimize(Likelihood, x0_truth, method='SLSQP',bounds=((E_min, E_max), (-1,1), (None, None), (None, None),(None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
+            x0_truth[1:4]=c2r(np.array((0,0,0.6/0.65)))
+            result_truth = minimize(Likelihood, x0_truth, method='SLSQP',bounds=((E_min, E_max), (0,1), (None, None), (None, None),(None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
 
             truth2 = r2c(result_truth.x[1:4]) * shell
             print('-'*60)
+            print(f'inner: {Likelihood_Time(result_in.x, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time))}')
+            print(f'outer: {Likelihood_Time(result_out.x, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time))}')
             print(x0_in)
             print(x0_out)
 
@@ -344,10 +345,9 @@ def recon(fid, fout, *args):
             print('outer')
             print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.2f, Likelihood: %+.6f' % (event_count, out2[0], out2[1], out2[2], norm(out2), result_out.fun))
             print('truth')
-            print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.2f, Likelihood: %+.6f' % (event_count, truth2[0], truth2[1], truth2[2], norm(truth2), result_truth.fun))
+            print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.2f, Likelihood: %+.6f' % (event_count, truth2[0], truth2[1], truth2[2], norm(truth2), result_out.fun))
             #print(event_count, result_out.x[1:4] * shell, np.sqrt(np.sum(result_out.x[1:4]**2)), result_out.fun)
             print('-'*60)
-            break
         else:
             recondata['x_sph_in'] = 0
             recondata['y_sph_in'] = 0
@@ -362,8 +362,8 @@ def recon(fid, fout, *args):
             recondata['E_sph_out'] = 0
             recondata['success_out'] = 0
             recondata['Likelihood_out'] = 0
-            #print('empty event!')
-            #print('-'*60)
+            print('empty event!')
+            print('-'*60)
         recondata.append()
         
         event_count = event_count + 1

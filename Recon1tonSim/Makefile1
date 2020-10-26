@@ -1,11 +1,11 @@
 .PHONY: all
 
 order:=15
-E:=2.0MeV_015
+E:=ground_axis
 path:=/mnt/stage/douwei/Simulation/1t_root/$(E)/
 save:=result_1t_$(E)_15_seg2
 #sim:=$(wildcard $(path)1t_*.root)
-sim:=$(wildcard $(path)1t_?????.root)
+sim:=$(wildcard $(path)1t_??.??0_z.root)
 dst:=$(sim:$(path)%.root=$(save)/%.h5)
 all:$(dst)
 
