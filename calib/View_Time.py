@@ -10,7 +10,7 @@ import numpy as np
 import h5py
 
 
-# In[61]:
+# In[3]:
 
 
 def readtime(path):
@@ -20,7 +20,7 @@ def readtime(path):
     for i in ra:
         try:
             h = tables.open_file(path + '/file_%+.3f.h5' % i)
-            coeff_time.append(h.root.coeff25[:])
+            coeff_time.append(h.root.coeff9[:])
             rd.append(i)
         except:
             pass
@@ -38,12 +38,12 @@ def readtime(path):
     return np.array(rd), coeff_time.T
 
 
-# In[62]:
+# In[4]:
 
 
-order = 10
+order = 8
 fit_order = 10
-rd, coeff_pe = readtime('./coeff_time_1t_reflection0.05_2MeV_0.1_1/')
+rd, coeff_pe = readtime('./coeff_time_1t_reflection0.05_2MeV_0.1_2/')
 print(rd.shape, coeff_pe.shape)
 
 bd = 0.91
@@ -89,10 +89,10 @@ for i in np.arange(order):
         y2_out = np.polyval(C_out, rd[index_out]/np.max(rd))
  
     plt.figure(num = i+1, dpi = 300)
-    plt.plot(rd, np.hstack((y1_in, y1_out[1:])), label = 'Legendre')
+    plt.plot(rd, np.hstack((y1_in, y1_out[1:])),label = 'Legendre fit')
     plt.axvline(0.65*bd)
     #plt.plot(rd, np.hstack((y2_in, y2_out[1:])), label='poly')
-    plt.plot(rd, coeff_pe[i], label='real')
+    plt.plot(rd, coeff_pe[i],'.', label='real')
     plt.xlabel('radius/m')
     plt.ylabel('Time Legendre coefficient')
     plt.legend()
@@ -100,7 +100,7 @@ for i in np.arange(order):
 #A = np.polynomial.legendre.Legendre.fit(np.array((-0.5,0.4)), np.array((0.5,0.6)),deg=5)
 
 
-# In[99]:
+# In[6]:
 
 
 from numpy.polynomial import legendre as LG
@@ -172,14 +172,14 @@ plt.scatter(cos_theta, a1, s=0.3,alpha=0.05)
 plt.show()
 
 
-# In[95]:
+# In[7]:
 
 
 plt.hist(a1, bins=1000)
 plt.show()
 
 
-# In[114]:
+# In[8]:
 
 
 plt.figure(dpi=300)
@@ -197,80 +197,14 @@ h.close()
 plt.show()
 
 
-# In[25]:
+# In[9]:
 
 
 print(coeff_pe[1][51],coeff_pe[1][57])
 np.interp(rd[51:58],np.array((rd[51], rd[57])), np.array((coeff_pe[1][51],coeff_pe[1][57])))
 
 
-# In[41]:
-
-
-def LoadDataPE_TW(path, radius, order):
-    data = []
-    filename = path + 'file_' + radius + '.h5'
-    h = tables.open_file(filename,'r')
-    coeff = 'coeff' + str(order)
-    hess = 'hess' + str(order)
-    data = eval('np.array(h.root.'+ coeff + '[:])')
-    h.close()
-    return data
-
-def main_photon(path, order):
-    ra = np.arange(0.01, 0.65, 0.01)
-    rd = []
-    coeff_pe = []
-    for radius in ra:
-        str_radius = '%+.3f' % radius
-        coeff= LoadDataPE_TW(path, str_radius, order)
-        rd.append(np.array(radius))
-        coeff_pe = np.hstack((coeff_pe, coeff)) 
-    coeff_pe = np.reshape(coeff_pe,(-1,np.size(rd)),order='F')
-    return rd, coeff_pe
-
-order = 5
-fit_order = 10
-rd, coeff_pe = main_photon('coeff_pe_1t_shell_200000/',order)
-rd = np.array(rd)
-coeff_pe = np.array(coeff_pe)
-#coeff_pe[1][55] = (coeff_pe[1][54] + coeff_pe[1][57])/2 + (coeff_pe[1][54] - coeff_pe[1][57])*1/3 
-#coeff_pe[1][56] = (coeff_pe[1][54] + coeff_pe[1][57])/2 + (coeff_pe[1][54] - coeff_pe[1][57])*1/3 
-coeff_pe[1][51:58] = np.interp(rd[51:58],np.array((rd[51], rd[57])), np.array((coeff_pe[1][51],coeff_pe[1][57])))
-_fit_coeff = np.zeros((order, fit_order))
-
-bd = 0.88
-deg = 40
-d = np.where(np.abs(rd-np.max(rd)*bd) == np.min(np.abs(rd-np.max(rd)*bd)))
-
-for i in np.arange(order):
-
-    if not i % 2:
-        # Legendre coeff
-
-        B, tmp = np.polynomial.legendre.legfit(np.hstack((rd/np.max(rd),-rd/np.max(rd))),                                                   np.hstack((coeff_pe[i+1], coeff_pe[i+1])),                                                   deg = deg, full = True)
-
-        y1 = np.polynomial.legendre.legval(rd/np.max(rd), B)
-        
-        C = np.polyfit(np.hstack((rd/np.max(rd),-rd/np.max(rd))),                           np.hstack((coeff_pe[i+1], coeff_pe[i+1])),                           deg=deg)
-        y2 = np.polyval(C, rd/np.max(rd))
-    else:
-        B, tmp = np.polynomial.legendre.legfit(np.hstack((rd/np.max(rd),-rd/np.max(rd))),                                                   np.hstack((coeff_pe[i+1], - coeff_pe[i+1])),                                                   deg = deg, full = True)
-
-        y1 = np.polynomial.legendre.legval(rd/np.max(rd), B)
-        
-        C = np.polyfit(np.hstack((rd/np.max(rd),-rd/np.max(rd))),                           np.hstack((coeff_pe[i+1], -coeff_pe[i+1])),                           deg=deg)
-        y2 = np.polyval(C, rd/np.max(rd))
-    plt.figure(num = i+1, dpi = 300)
-    plt.plot(rd, coeff_pe[i+1], label='real')
-    plt.plot(rd, y1, label = 'Legendre')
-    plt.plot(rd, y1, label = 'poly')
-    plt.legend()
-    plt.show()
-#A = np.polynomial.legendre.Legendre.fit(np.array((-0.5,0.4)), np.array((0.5,0.6)),deg=5)
-
-
-# In[32]:
+# In[12]:
 
 
 qts = np.array((0.01,0.02,0.05,0.1,0.2,0.5))
@@ -294,7 +228,7 @@ for qt in qts:
 #A = np.polynomial.legendre.Legendre.fit(np.array((-0.5,0.4)), np.array((0.5,0.6)),deg=5)
 
 
-# In[137]:
+# In[153]:
 
 
 from numpy.polynomial import legendre as LG
@@ -342,13 +276,13 @@ def Legendre_coeff(PMT_pos_rep, vertex, cut):
     return x, cos_theta
 
 plt.figure(dpi=300)
-h = tables.open_file('coeff_time_1t_reflection0.05_2MeV_0.1/file_+0.500.h5')
+h = tables.open_file('coeff_time_1t_reflection0.05_2MeV_0.1_2/file_+0.580.h5')
 z = np.linspace(-1,1,100)
 k = LG.legval(z, h.root.coeff5[:])
 h.close()
 plt.plot(z, k, 'r-', label='fit')
 
-h1 = tables.open_file('/mnt/stage/douwei/Simulation/1t_root/reflection0.05/1t_+0.500Q.h5')
+h1 = tables.open_file('/mnt/stage/douwei/Simulation/1t_root/reflection0.05_2MeV/1t_+0.580Q.h5')
 a1 = h1.root.GroundTruth[:]['PulseTime']
 a2 = h1.root.GroundTruth[:]['ChannelID']
 a3 = h1.root.GroundTruth[:]['EventID']
@@ -367,7 +301,7 @@ bins = np.linspace(-1,1,100)
 index = np.digitize(cos_theta, bins)
 tmp = []
 for ii, i in enumerate(np.unique(index)):
-    tmp.append(np.quantile(a1[index==i],0.12))
+    tmp.append(np.quantile(a1[index==i],0.1))
 plt.plot(bins[1:], np.array(tmp),'.',label='raw data')
 plt.xlabel('cos theta')
 plt.ylabel('expected pulse time')
@@ -380,6 +314,194 @@ plt.show()
 
 
 cos_theta[index==1]
+
+
+# In[187]:
+
+
+from numpy.polynomial import legendre as LG
+def ReadPMT():
+    '''
+    # Read PMT position
+    # output: 2d PMT position 30*3 (x, y, z)
+    '''
+    f = open(r"./PMT_1t.txt")
+    line = f.readline()
+    data_list = [] 
+    while line:
+        num = list(map(float,line.split()))
+        data_list.append(num)
+        line = f.readline()
+    f.close()
+    PMT_pos = np.array(data_list)
+    return PMT_pos
+def Legendre_coeff(PMT_pos_rep, vertex, cut):
+    '''
+    # calulate the Legendre value of transformed X
+    # input: PMT_pos: PMT No * 3
+          vertex: 'v' 
+          cut: cut off of Legendre polynomial
+    # output: x: as 'X' at the beginnig    
+    
+    '''
+    size = np.size(PMT_pos_rep[:,0])
+    # oh, it will use norm in future version
+    
+    if(np.sum(vertex**2) > 1e-6):
+        cos_theta = np.sum(vertex*PMT_pos_rep,axis=1)            /np.sqrt(np.sum(vertex**2, axis=1)*np.sum(PMT_pos_rep**2,axis=1))
+    else:
+        # make r=0 as a boundry, it should be improved
+        cos_theta = np.ones(size)
+
+    x = np.zeros((size, cut))
+    # legendre coeff
+    for i in np.arange(0,cut):
+        c = np.zeros(cut)
+        c[i] = 1
+        x[:,i] = LG.legval(cos_theta,c)
+
+    print(PMT_pos_rep.shape, x.shape, cos_theta.shape)
+    return x, cos_theta
+
+plt.figure(dpi=300)
+h = tables.open_file('coeff_time_1t_reflection0.05_2MeV_0.1_2/file_+0.550.h5')
+z = np.linspace(-1,1,100)
+k = LG.legval(z, h.root.coeff5[:])
+h.close()
+plt.plot(z, k, 'r-', label='fit')
+
+h1 = tables.open_file('/mnt/stage/douwei/Simulation/1t_root/reflection0.05_2MeV/1t_+0.550Q.h5')
+a1 = h1.root.GroundTruth[:]['PulseTime']
+a2 = h1.root.GroundTruth[:]['ChannelID']
+a3 = h1.root.GroundTruth[:]['EventID']
+x = h1.root.TruthData[:]['x']
+y = h1.root.TruthData[:]['y']
+z = h1.root.TruthData[:]['z']
+x1 = np.vstack((x, y, z)).T
+counts = np.bincount(a3)
+counts = counts[counts!=0]
+PMT_pos = ReadPMT()
+vertex = np.repeat(x1, counts, axis=0)
+PMT_pos_rep = PMT_pos[a2]
+tmp_x_p, cos_theta = Legendre_coeff(PMT_pos_rep, vertex, 6)
+#plt.scatter(cos_theta, a1, s=0.3,alpha=0.05)
+bins = np.linspace(-1,1,100)
+index = np.digitize(cos_theta, bins)
+tmp = []
+for ii, i in enumerate(np.unique(index)):
+    tmp.append(np.quantile(a1[index==i],0.1))
+plt.plot(bins[1:], np.array(tmp),'.',label='raw data')
+plt.xlabel('cos theta')
+plt.ylabel('expected pulse time')
+plt.title('qt = 0.1')
+plt.legend()
+plt.show()
+
+
+# In[7]:
+
+
+from numpy.polynomial import legendre as LG
+def ReadPMT():
+    '''
+    # Read PMT position
+    # output: 2d PMT position 30*3 (x, y, z)
+    '''
+    f = open(r"./PMT_1t.txt")
+    line = f.readline()
+    data_list = [] 
+    while line:
+        num = list(map(float,line.split()))
+        data_list.append(num)
+        line = f.readline()
+    f.close()
+    PMT_pos = np.array(data_list)
+    return PMT_pos
+def Legendre_coeff(PMT_pos_rep, vertex, cut):
+    '''
+    # calulate the Legendre value of transformed X
+    # input: PMT_pos: PMT No * 3
+          vertex: 'v' 
+          cut: cut off of Legendre polynomial
+    # output: x: as 'X' at the beginnig    
+    
+    '''
+    size = np.size(PMT_pos_rep[:,0])
+    # oh, it will use norm in future version
+    
+    if(np.sum(vertex**2) > 1e-6):
+        cos_theta = np.sum(vertex*PMT_pos_rep,axis=1)            /np.sqrt(np.sum(vertex**2, axis=1)*np.sum(PMT_pos_rep**2,axis=1))
+    else:
+        # make r=0 as a boundry, it should be improved
+        cos_theta = np.ones(size)
+
+    x = np.zeros((size, cut))
+    # legendre coeff
+    for i in np.arange(0,cut):
+        c = np.zeros(cut)
+        c[i] = 1
+        x[:,i] = LG.legval(cos_theta,c)
+
+    print(PMT_pos_rep.shape, x.shape, cos_theta.shape)
+    return x, cos_theta
+
+plt.figure(dpi=300)
+h = tables.open_file('coeff_time_1t_reflection0.05_2MeV_0.1_1/file_+0.620.h5')
+z = np.linspace(-1,1,100)
+k = LG.legval(z, h.root.coeff25[:])
+h.close()
+plt.plot(z, k, 'r-')
+
+h1 = tables.open_file('/mnt/stage/douwei/Simulation/1t_root/reflection0.05/1t_+0.620Q.h5')
+a1 = h1.root.GroundTruth[:]['PulseTime']
+a2 = h1.root.GroundTruth[:]['ChannelID']
+a3 = h1.root.GroundTruth[:]['EventID']
+x = h1.root.TruthData[:]['x']
+y = h1.root.TruthData[:]['y']
+z = h1.root.TruthData[:]['z']
+x1 = np.vstack((x, y, z)).T
+counts = np.bincount(a3)
+counts = counts[counts!=0]
+PMT_pos = ReadPMT()
+vertex = np.repeat(x1, counts, axis=0)
+PMT_pos_rep = PMT_pos[a2]
+tmp_x_p, cos_theta = Legendre_coeff(PMT_pos_rep, vertex, 6)
+plt.scatter(cos_theta, a1, s=0.3,alpha=0.05)
+plt.show()
+
+
+# In[22]:
+
+
+plt.figure(dpi=300)
+H, xe, ye = np.histogram2d(cos_theta, a1, bins=1000)
+plt.contourf(xe[:-1], ye[:-1], np.log(H.T+1), label='Data')
+
+
+h = tables.open_file('coeff_time_1t_reflection0.05_2MeV_0.1_1/file_+0.620.h5')
+z = np.linspace(-1,1,100)
+k = LG.legval(z, h.root.coeff25[:])
+h.close()
+plt.plot(z, k, 'r-', alpha=0.5, linewidth=1, label='Predict (qt=0.1)')
+plt.xlim([-1,1])
+plt.xlabel(r'cosine $\theta$')
+plt.ylabel('Hit Time/ns')
+plt.colorbar()
+plt.legend()
+plt.show()
+#plt.contourf(xe[:-1], ye[:-1], H.T)
+plt.figure(dpi=300)
+index = 990
+plt.plot(ye[:-1], H[index][:], label='Photon Time')
+h = tables.open_file('coeff_time_1t_reflection0.05_2MeV_0.1_1/file_%+.2f0.h5' % (0.65*xe[index]))
+z = np.linspace(-1,1,100)
+k = LG.legval(xe[index], h.root.coeff25[:])
+plt.axvline(k, color='red',label = 'qt=0.1')
+plt.xlabel('Time/ns')
+plt.ylabel('Counts')
+plt.legend()
+h.close()
+plt.show()
 
 
 # In[ ]:

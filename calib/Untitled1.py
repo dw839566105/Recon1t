@@ -305,7 +305,7 @@ for radius in np.arange(0.05,0.65,0.05):
     plt.show()
 
 
-# In[146]:
+# In[168]:
 
 
 from numpy.polynomial import legendre as LG
@@ -346,13 +346,15 @@ for radius in np.arange(0.50,0.65,0.01):
     plt.plot(PMT_pos[:,1]/0.832, q2, 'k.',label='y')
     plt.plot(PMT_pos[:,2]/0.832, q3, 'b.',label='z')
 
-    plt.plot(zs, expect/5,label='fitfit')
-    plt.title('radius=%.2f' % radius)
+    #plt.plot(zs, expect/5,label='fitfit')
+    plt.title('radius=%.2fm' % radius)
     order = 20
     h = tables.open_file('./coeff_pe_1t_reflection0.00_30/file_%+.3f.h5' % radius)
     z = np.linspace(-1,1,100)
     k = LG.legval(z, eval('h.root.coeff%d[:]' % order))
     plt.plot(z,np.exp(k)/5, label='fit')
+    plt.xlabel(r'cos$\theta$')
+    plt.ylabel('Received photon number')
     plt.legend()
     plt.semilogy()
     plt.show()

@@ -72,7 +72,7 @@ def Likelihood(vertex, *args):
     coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe = args
     L1 = Likelihood_PE(vertex, *(coeff_pe, PMT_pos, pe_array, cut_pe))
     L2 = Likelihood_Time(vertex, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time))
-    return L1
+    return L1 + L2 
 
 def Likelihood_PE(vertex, *args):
     coeff, PMT_pos, event_pe, cut = args
@@ -327,7 +327,7 @@ def recon(fid, fout, *args):
             print(x0_in)
             print(x0_out)
             print('inner')
-            print(result_in.fun)
+            print(f'Template likelihood: {-np.max(L)}')
             print('%d: [%+.2f, %+.2f, %+.2f] radius: %+.2f, Likelihood: %+.6f' % (event_count, in2[0], in2[1], in2[2], norm(in2), result_in.fun))
             #print(event_count, result_in.x[1:4] * shell, np.sqrt(np.sum(result_in.x[1:4]**2)),result_in.fun)
             print('outer')

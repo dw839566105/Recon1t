@@ -254,7 +254,7 @@ def main_Calib(radius, path, fout, cut_max, PMT_pos):
         #print('total pe shape:', total_pe.shape)
         #print('Legendre coeff shape:',LegendreCoeff.shape)
         
-        for cut in np.arange(5,cut_max,10): # just take special values
+        for cut in np.arange(5,cut_max,1): # just take special values
             X = LegendreCoeff[:,0:cut]
             y = Q
             print(X.shape, y.shape)

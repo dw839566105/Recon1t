@@ -20,6 +20,7 @@ def readfile(filename):
     truthtable = h1.root.GroundTruth
     EventID = truthtable[:]['EventID']
     ChannelID = truthtable[:]['ChannelID']
+    PulseTime = truthtable[:]['PulseTime']
     
     x = h1.root.TruthData[:]['x']
     y = h1.root.TruthData[:]['y']
@@ -44,11 +45,13 @@ def readfile(filename):
                 #print('Fired PMT', ChannelID[EventID==ID])
                 
                 ChannelID = ChannelID[~(EventID == ID)]
+                PulseTime = PulseTime[~(EventID == ID)]
                 EventID = EventID[~(EventID == ID)]
+                
         x = x[~dn_index]
         y = y[~dn_index]
         z = z[~dn_index]
-    return (EventID, ChannelID, x, y, z)
+    return (EventID, ChannelID, PulseTime, x, y, z)
     
 def readchain(radius, path, axis):
     '''
@@ -64,25 +67,26 @@ def readchain(radius, path, axis):
             # filename = path + '1t_' + radius + '.h5'
             # eg: /mnt/stage/douwei/Simulation/1t_root/2.0MeV_xyz/1t_+0.030.h5
             filename = '%s1t_%s_%sQ.h5' % (path, radius, axis)
-            EventID, ChannelID, x, y, z = readfile(filename)
+            EventID, ChannelID, PulseTime, x, y, z = readfile(filename)
         else:
             try:
                 # filename = path + '1t_' + radius + '_n.h5'
                 # eg: /mnt/stage/douwei/Simulation/1t_root/2.0MeV_xyz/1t_+0.030_1.h5
                 filename = '%s1t_%s_%s_%dQ.h5' % (path, radius, axis, i)
-                EventID1, ChannelID1, x1, y1, z1 = readfile(filename)
+                EventID1, ChannelID1, PulseTime1, x1, y1, z1 = readfile(filename)
                 EventID = np.hstack((EventID, EventID1))
                 ChannelID = np.hstack((ChannelID, ChannelID1))
+                PulseTime = np.hstack((PulseTime, PulseTime1))
                 x = np.hstack((x, x1))
                 y = np.hstack((y, y1))
                 z = np.hstack((z, z1))
             except:
                 pass
 
-    return EventID, ChannelID, x, y, z
+    return EventID, ChannelID, PulseTime, x, y, z
 
 def main(path, radius, axis, sign='+'):
-    EventIDx, ChannelIDx, xx, yx, zx = readchain(sign + radius, path, axis)
+    EventIDx, ChannelIDx, PulseTime, xx, yx, zx = readchain(sign + radius, path, axis)
     x1 = np.array((xx[0], yx[0], zx[0]))
     size = np.size(np.unique(EventIDx))
 

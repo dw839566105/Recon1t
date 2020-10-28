@@ -10,7 +10,7 @@ import numpy as np
 import h5py
 
 
-# In[3]:
+# In[82]:
 
 
 def LoadDataPE_TW(path, radius, order):
@@ -49,7 +49,7 @@ for i in np.arange(order-1):
         plt.figure(num=i+1, dpi=300)
         plt.plot(rd1, coeff_pe1[i] - np.log(4) - np.log(20000/4285),'-o',linewidth=0.5, markersize=2, label='polished')
         plt.plot(rd2, coeff_pe2[i] - np.log(20000/4285),'-o',linewidth=0.5, markersize=2, label='absorbed')
-        plt.plot(rd3, coeff_pe3[i],'-o',linewidth=0.5, markersize=2, label='ground')
+        plt.plot(rd3, coeff_pe3[i] - np.log(4) - np.log(20000/4285),'-o',linewidth=0.5, markersize=2, label='ground')
         #plt.errorbar(rd1, coeff_pe1[i] - np.log(4) - np.log(20000/4285),yerr=error_pe1[i],linewidth=0.5, markersize=2, label='polished')
         #plt.errorbar(rd2, coeff_pe2[i] - np.log(20000/4285),yerr=error_pe2[i],linewidth=0.5, markersize=2, label='absorbed')
         #plt.errorbar(rd3, coeff_pe3[i],yerr=error_pe3[i],linewidth=0.5, markersize=2, label='ground')
@@ -373,10 +373,52 @@ for i in np.arange(15,49,5):
 plt.legend()
 
 
-# In[78]:
+# In[81]:
 
 
-PMT_pos
+def LoadDataPE_TW(path, radius, order):
+    data = []
+    error = []
+    filename = path + 'file_' + radius + '.h5'
+    h = tables.open_file(filename,'r')
+    coeff = 'coeff' + str(order)
+    std = 'std' + str(order)
+    data = eval('np.array(h.root.'+ coeff + '[:])')
+    error = eval('np.array(h.root.'+ std + '[:])')
+    h.close()
+    return data, error
+
+def main_photon(path, order):
+    ra = np.arange(0.55, 0.65, 0.002)
+    rd = []
+    coeff_pe = []
+    error_pe = []
+    for radius in ra:
+        str_radius = '%+.3f' % radius
+        coeff, error= LoadDataPE_TW(path, str_radius, order)
+        rd.append(np.array(radius))
+        coeff_pe = np.hstack((coeff_pe, coeff))
+        error_pe = np.hstack((error_pe, error))
+    coeff_pe = np.reshape(coeff_pe,(-1,np.size(rd)),order='F')
+    error_pe = np.reshape(error_pe,(-1,np.size(rd)),order='F')
+    return rd, coeff_pe, error
+
+order = 25
+rd1, coeff_pe1, error_pe1 = main_photon('coeff_pe_1t_compact_30/',order)
+for i in np.arange(order-1):
+    if(i==0):
+        plt.figure(num=i+1, dpi=300)
+        plt.plot(rd1, coeff_pe1[i] - np.log(4) - np.log(20000/4285),'-o',linewidth=0.5, markersize=2, label='polished')
+    else:
+        plt.figure(num=i+1, dpi=300)
+        plt.plot(rd1, coeff_pe1[i],'-o',linewidth=0.5, markersize=2, label='polished')
+
+    plt.legend()
+    plt.xlabel('Radius/m')
+    plt.ylabel('PE Legendre Coefficient')
+    plt.title('%d-th coefficient' % i)
+    plt.savefig('Coeff%d.png' % i)
+    plt.show()
 
 
 # In[ ]:

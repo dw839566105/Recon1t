@@ -1,6 +1,7 @@
 .PHONY: all
 
-E:=reflection0.05_2MeV
+#E:=reflection0.05_2MeV
+E:=compact
 # 2.0MeV_dns: no dark noise, all PMTs are the same
 # 2.0MeV_dn: no dark noise, PMTs are different
 # 2.0MeV_xyz: dark noise thereshold 1
@@ -8,8 +9,8 @@ E:=reflection0.05_2MeV
 path:=/mnt/stage/douwei/Simulation/1t_root/$(E)/
 
 upper:=0.65
-lower:=0.01
-radius:=$(shell seq -f '%+.3f' $(upper) -0.01 $(lower))
+lower:=0.55
+radius:=$(shell seq -f '%+.3f' $(upper) -0.002 $(lower))
 
 order:=30
 save_pe:=coeff_pe_1t_$(E)_$(order)

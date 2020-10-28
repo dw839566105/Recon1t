@@ -24,19 +24,16 @@ def readtime(path):
     '''
     return ra, coeff_time.T
 
-def main(order=5, fit_order=10, qt=0.01):
-    rd, coeff_pe = readtime('./coeff_time_1t_shell_200000_%s' % qt)
+def main(order=5, fit_order=10, qt=0.1):
+    #rd, coeff_pe = readtime('./coeff_time_1t_shell_200000_%s' % qt)
+    rd, coeff_pe = readtime('./coeff_time_1t_reflection0.05_%s_2' % qt)
     coeff_L_in = np.zeros((order, fit_order + 1))
     coeff_L_out = np.zeros((order, fit_order + 1))
     coeff_p_in = np.zeros((order, fit_order + 1))
     coeff_p_out = np.zeros((order, fit_order + 1))
     bd = 0.88
     d = np.where(np.abs(rd-np.max(rd)*bd) == np.min(np.abs(rd-np.max(rd)*bd)))
-
-
     deg = fit_order
-    bd = 0.88
-    d = np.where(np.abs(rd-np.max(rd)*bd) == np.min(np.abs(rd-np.max(rd)*bd)))
 
     for i in np.arange(order):
         index_in = (rd<=rd[d[0][0]])

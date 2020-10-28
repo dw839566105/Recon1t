@@ -1,6 +1,8 @@
 import tables
 import numpy as np
 import h5py
+from numpy.polynomial import legendre as LG
+from scipy.linalg import norm
 
 h1 = tables.open_file("./template.h5")
 tp = h1.root.template[:]
@@ -12,6 +14,33 @@ coeff_time_in = h.root.coeff_L_in[:]
 coeff_time_out = h.root.coeff_L_out[:]
 h.close()
 cut_time, fitcut_time = coeff_time_in.shape
+
+def ReadPMT():
+    f = open(r"../calib/PMT_1t.txt")
+    line = f.readline()
+    data_list = [] 
+    while line:
+        num = list(map(float,line.split()))
+        data_list.append(num)
+        line = f.readline()
+    f.close()
+    PMT_pos = np.array(data_list)
+    return PMT_pos
+
+def r2c(c):
+    v = np.zeros(3)
+    v[2] = c[0] * np.cos(c[1]) #z
+    rho = c[0] * np.sin(c[1])
+    v[0] = rho * np.cos(c[2]) #x
+    v[1] = rho * np.sin(c[2]) #y
+    return v
+
+def c2r(c):
+    v = np.zeros(3)
+    v[0] = norm(c)
+    v[1] = np.arccos(c[2]/(v[0]+1e-6))
+    v[2] = np.arctan(c[1]/(c[0]+1e-6)) + (c[0]<0)*np.pi
+    return v
 
 def Likelihood_Time(vertex, *args):
     coeff, PMT_pos, fired, time, cut = args
@@ -45,12 +74,10 @@ def Likelihood_Time(vertex, *args):
 
     # legendre coeff by polynomials
     k = np.zeros((1,cut))
-    if(z>=bd_pe):
-        k[0] = LG.legval(z, coeff_time_out.T)
-    else:
-        k[0] = LG.legval(z, coeff_time_in.T)
+
+    k[0] = LG.legval(z, coeff_time_in.T)
     
-    k[0,0] = vertex[4]
+    #k[0,0] = vertex[4]
     T_i = np.dot(x, np.transpose(k))
     L = np.nansum(Likelihood_quantile(y, T_i[:,0], 0.05, 1.25))
     #L = - np.nansum(TimeProfile(y, T_i[:,0]))
@@ -68,18 +95,6 @@ def Likelihood_quantile(y, T_i, tau, ts):
     #log_Likelihood = exp
     return L
 
-def ReadPMT():
-    f = open(r"./PMT_1t.txt")
-    line = f.readline()
-    data_list = [] 
-    while line:
-        num = list(map(float,line.split()))
-        data_list.append(num)
-        line = f.readline()
-    f.close()
-    PMT_pos = np.array(data_list)
-    return PMT_pos
-
 def readfile(filename):
     '''
     # Read single file
@@ -91,8 +106,7 @@ def readfile(filename):
     truthtable = h1.root.GroundTruth
     EventID = truthtable[:]['EventID']
     ChannelID = truthtable[:]['ChannelID']
-    print(h1.root.GroundTruth[:]['PulseTime'])
-    exit()
+    PulseTime = truthtable[:]['PulseTime']
     x = h1.root.TruthData[:]['x']
     y = h1.root.TruthData[:]['y']
     z = h1.root.TruthData[:]['z']
@@ -116,11 +130,12 @@ def readfile(filename):
                 #print('Fired PMT', ChannelID[EventID==ID])
                 
                 ChannelID = ChannelID[~(EventID == ID)]
+                PulseTime = PulseTime[~(EventID == ID)]
                 EventID = EventID[~(EventID == ID)]
         x = x[~dn_index]
         y = y[~dn_index]
         z = z[~dn_index]
-    return (EventID, ChannelID, x, y, z)
+    return (EventID, ChannelID, PulseTime, x, y, z)
     
 def readchain(radius, path, axis):
     '''
@@ -136,30 +151,28 @@ def readchain(radius, path, axis):
             # filename = path + '1t_' + radius + '.h5'
             # eg: /mnt/stage/douwei/Simulation/1t_root/2.0MeV_xyz/1t_+0.030.h5
             filename = '%s1t_%s_%sQ.h5' % (path, radius, axis)
-            EventID, ChannelID, x, y, z = readfile(filename)
+            EventID, ChannelID, PulseTime, x, y, z = readfile(filename)
         else:
             try:
                 # filename = path + '1t_' + radius + '_n.h5'
                 # eg: /mnt/stage/douwei/Simulation/1t_root/2.0MeV_xyz/1t_+0.030_1.h5
                 filename = '%s1t_%s_%s_%dQ.h5' % (path, radius, axis, i)
-                EventID1, ChannelID1, x1, y1, z1 = readfile(filename)
+                EventID1, ChannelID1, PulseTime1, x1, y1, z1 = readfile(filename)
                 EventID = np.hstack((EventID, EventID1))
                 ChannelID = np.hstack((ChannelID, ChannelID1))
+                PulseTime = np.hstack((PulseTime, PulseTime1))
                 x = np.hstack((x, x1))
                 y = np.hstack((y, y1))
                 z = np.hstack((z, z1))
             except:
                 pass
 
-    return EventID, ChannelID, x, y, z
+    return EventID, ChannelID, PulseTime, x, y, z
 
 def main(path, radius, axis, sign='+'):
-    EventIDx, ChannelIDx, xx, yx, zx = readchain(sign + radius, path, axis)
-    x1 = np.array((xx[0], yx[0], zx[0]))
-    size = np.size(np.unique(EventIDx))
-
-    EventID = EventIDx
-    ChannelID = ChannelIDx
+    EventID, ChannelID, PulseTime, x, y, z = readchain(sign + radius, path, axis)
+    x1 = np.array((x[0], y[0], z[0]))
+    size = np.size(np.unique(EventID))
 
     total = np.zeros((size,3))
     print('total event: %d' % np.size(np.unique(EventID)), flush=True)
@@ -175,6 +188,11 @@ def main(path, radius, axis, sign='+'):
         # tabulate begin with 0
         event_pe[0:np.size(tabulate)] = tabulate
         
+        fired = ChannelID[EventID == k]
+        time = PulseTime[EventID == k]
+        cut = 5
+        for i in np.arange(data.shape[0]):
+            L = Likelihood_Time(np.hstack((0,bins[i])), *(coeff_time_in, PMT_pos, fired, time, cut))
         rep = np.tile(event_pe,(np.size(bins[:,0]),1))
         real_sum = np.sum(data, axis=1)
         corr = (data.T/(real_sum/np.sum(event_pe))).T
@@ -186,7 +204,8 @@ def main(path, radius, axis, sign='+'):
     with h5py.File('./MCmean/file%s%s%s.h5' % (sign, axis, radius),'w') as out:
         out.create_dataset('result', data = total)
         
-import sys        
+import sys     
+PMT_pos = ReadPMT()
 path = sys.argv[1]
 radius = sys.argv[2]
 axis = sys.argv[3]

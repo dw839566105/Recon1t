@@ -14,8 +14,8 @@ def LoadDataPE_TW(path, radius, order):
     h.close()
     return data
 
-def main_photon(path, order):
-    ra = np.arange(0.01, 0.65, 0.01)
+def main_photon_sparse(path, order):
+    ra = np.arange(0.01, 0.55, 0.01)
     rd = []
     coeff_pe = []
     for radius in ra:
@@ -25,16 +25,30 @@ def main_photon(path, order):
         coeff_pe = np.hstack((coeff_pe, coeff)) 
     coeff_pe = np.reshape(coeff_pe,(-1,np.size(rd)),order='F')
     return rd, coeff_pe
+
+def main_photon_compact(path, order):
+    ra = np.arange(0.55, 0.65, 0.002)
+    rd = []
+    coeff_pe = []
+    for radius in ra:
+        str_radius = '%+.3f' % radius
+        coeff= LoadDataPE_TW(path, str_radius, order)
+        rd.append(np.array(radius))
+        coeff_pe = np.hstack((coeff_pe, coeff)) 
+    coeff_pe = np.reshape(coeff_pe,(-1,np.size(rd)),order='F')
+    return rd, coeff_pe
+
 def main(order=15, fit_order=10):
-    rd, coeff_pe = main_photon('coeff_pe_1t_reflection0.00_30/',order)
-    rd = np.array(rd)
-    coeff_pe = np.array(coeff_pe)
-    #coeff_pe[1][51:58] = np.interp(rd[51:58],np.array((rd[51], rd[57])), np.array((coeff_pe[1][51],coeff_pe[1][57])))
+    rd1, coeff_pe1 = main_photon_sparse('coeff_pe_1t_reflection0.00_30/',order)
+    rd2, coeff_pe2 = main_photon_compact('coeff_pe_1t_compact_30/',order)
+    coeff_pe2[0] = coeff_pe2[0] + np.log(20000/4285)
+    rd = np.hstack((rd1, rd2))
+    coeff_pe = np.hstack((coeff_pe1, coeff_pe2))
     coeff_L_in = np.zeros((order, fit_order + 1))
     coeff_L_out = np.zeros((order, fit_order + 1))
     coeff_p_in = np.zeros((order, fit_order + 1))
     coeff_p_out = np.zeros((order, fit_order + 1))
-    bd = 0.91
+    bd = 0.908
     d = np.where(np.abs(rd-np.max(rd)*bd) == np.min(np.abs(rd-np.max(rd)*bd)))
 
     for i in np.arange(order):
@@ -101,20 +115,21 @@ def main(order=15, fit_order=10):
         plt.plot(rd[index_out], np.hstack((y1_out)), label = 'Legendre')
         
         tmp = []
-        for z in np.arange(0,0.64,0.001):
+        for z in np.arange(0,0.65,0.001):
             if(z/0.64>=bd):
-                k = LG.legval(z/0.64, B_out)
+                k = LG.legval(z/0.65, B_out)
             else:
-                k = LG.legval(z/0.64, B_in)
+                k = LG.legval(z/0.65, B_in)
             #print(k)
             tmp.append(k)
         tmp = np.array(tmp)
-        plt.plot(np.arange(0,0.64,0.001), tmp)
+        plt.plot(np.arange(0,0.65,0.001), tmp, label='fit')
         plt.xlabel('radius/m')
         plt.ylabel('PE Legendre coefficients')
         plt.title('%d-th, max fit = %d' %(i, fit_order))
-        #plt.legend()
+        plt.legend()
         plt.savefig('coeff_PE_%d.png' % i)
+        plt.close()
     return coeff_L_in, coeff_L_out, coeff_p_in, coeff_p_out, bd
 
 coeff_L_in, coeff_L_out, coeff_p_in, coeff_p_out, bd = main(eval(sys.argv[1]), eval(sys.argv[2]))  
