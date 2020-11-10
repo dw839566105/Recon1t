@@ -19,14 +19,14 @@ import os
 # + Simulation: (0,z/5,z): z from -0.65 to 0.65 m, step 0.01 m
 # + 20k events per point
 
-# In[11]:
+# In[262]:
 
 
 # example of read 1 file
 def main(path,axis):
-    for i,file in enumerate(np.arange(0,0.65,0.05)):
+    for i,file in enumerate(np.arange(0.01,0.65,0.05)):
 
-        h = tables.open_file('../%s/1t_%+.3f_%s.h5' % (path, file, axis),'r')
+        h = tables.open_file('../%s_old/1t_%+.3f_%s.h5' % (path, file, axis),'r')
         recondata = h.root.Recon
         E1 = recondata[:]['E_sph_in']
         x1 = recondata[:]['x_sph_in']
@@ -61,13 +61,20 @@ def main(path,axis):
         y = data[(s1 * s2)!=0,1]
         z = data[(s1 * s2)!=0,2]
         
+        from matplotlib import cm
+        from matplotlib.colors import ListedColormap, LinearSegmentedColormap
+        viridis = cm.get_cmap('jet', 256)
+        newcolors = viridis(np.linspace(0, 1, 256))
+        wt = np.array([1, 1, 1, 1])
+        newcolors[:25, :] = wt
+        newcmp = ListedColormap(newcolors)
         
         r = np.sqrt(x**2 + y**2 + z**2)
         index = (r<0.64) & (r>0.01) & (~np.isnan(r))
         H1, xedges, yedges = np.histogram2d(x[index]**2 + y[index]**2, z[index], bins=50)
         X, Y = np.meshgrid(xedges[1:],yedges[1:])
         plt.figure(dpi=200)
-        plt.contourf(X,Y,np.log(np.transpose(H1)+1))
+        plt.contourf(X,Y,np.log(np.transpose(H1)+1), cmap=newcmp)
         plt.colorbar()
         plt.xlabel(r'$x^2 + y^2/m^2$')
         plt.ylabel('$z$/m')
@@ -94,7 +101,7 @@ def main(path,axis):
 #main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','y')
 #main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','z')
 
-main('result_1t_ground_axis_Recon_1t_new','x')
+main('result_1t_point_axis_Recon_1t_new','x')
 #main('result_1t_2.0MeV_dns_Recon_1t_10','y')
 #main('result_1t_2.0MeV_dns_Recon_1t_10','z')
 
@@ -1370,7 +1377,7 @@ plt.ylabel('Recon')
 plt.show()
 
 
-# In[69]:
+# In[120]:
 
 
 # example of read 1 file
@@ -1486,9 +1493,9 @@ def main(path,axis):
 #main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','y')
 #main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','z')
 
-x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_ground_axis_Recon_1t_new','x')
-x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_ground_axis_Recon_1t_new','y')
-x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_ground_axis_Recon_1t_new','z')
+x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_ground_axis_Recon_1t_new_pe','x')
+x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_ground_axis_Recon_1t_new_pe','y')
+x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_ground_axis_Recon_1t_new_pe','z')
 #main('result_1t_2.0MeV_dns_Recon_1t_10','y')
 #main('result_1t_2.0MeV_dns_Recon_1t_10','z')
 
@@ -1506,6 +1513,358 @@ plt.scatter(x,x, c=cstm_autumn_r(x))
 
 
 a[0][3]
+
+
+# In[209]:
+
+
+# example of read 1 file
+def main(path,axis):
+    
+    x_recon = np.empty(0)
+    y_recon = np.empty(0)
+    z_recon = np.empty(0)
+    x_truth = np.empty(0)
+    y_truth = np.empty(0)
+    z_truth = np.empty(0)
+    
+    for i,file in enumerate(np.arange(0,0.65,0.01)):
+        try:
+            h = tables.open_file('../%s/1t_%+.3f_%s.h5' % (path, file, axis),'r')
+            recondata = h.root.Recon
+            E1 = recondata[:]['E_sph_in']
+            x1 = recondata[:]['x_sph_in']
+            y1 = recondata[:]['y_sph_in']
+            z1 = recondata[:]['z_sph_in']
+            L1 = recondata[:]['Likelihood_in']
+            s1 = recondata[:]['success_in']
+
+            E2 = recondata[:]['E_sph_out']
+            x2 = recondata[:]['x_sph_out']
+            y2 = recondata[:]['y_sph_out']
+            z2 = recondata[:]['z_sph_out']
+            L2 = recondata[:]['Likelihood_out']
+            s2 = recondata[:]['success_out']
+
+            data = np.zeros((np.size(x1),3))
+
+            index = L1 < L2
+            data[index,0] = x1[index]
+            data[index,1] = y1[index]
+            data[index,2] = z1[index]
+
+            data[~index,0] = x2[~index]
+            data[~index,1] = y2[~index]
+            data[~index,2] = z2[~index]
+
+            xt = 0
+            yt = 0
+            zt = 0
+            if(axis=='x'):
+                xt = file
+            elif(axis=='y'):
+                yt = file
+            elif(axis=='z'):
+                zt = file
+            else:
+                print(haha)
+            x = data[(s1 * s2)!=0,0]
+            y = data[(s1 * s2)!=0,1]
+            z = data[(s1 * s2)!=0,2]
+
+            '''
+            r = np.sqrt(x**2 + y**2 + z**2)
+            index = (r<0.64) & (r>0.01) & (~np.isnan(r))
+            H1, xedges, yedges = np.histogram2d(x[index]**2 + y[index]**2, z[index], bins=50)
+            X, Y = np.meshgrid(xedges[1:],yedges[1:])
+            plt.figure(dpi=200)
+            plt.contourf(X,Y,np.log(np.transpose(H1)+1))
+            plt.colorbar()
+            plt.xlabel(r'$x^2 + y^2/m^2$')
+            plt.ylabel('$z$/m')
+            plt.title('axis = %s, radius=%+.2fm' % (axis,file))
+            plt.savefig('./fig/Scatter_1MeV%+.2f_%s.pdf' % (file,axis))
+            plt.show()
+            #index1 = (~index) & (~np.isnan(x2))
+            #plt.hist(np.nan_to_num(np.sqrt(data[index1,0]**2 + data[index1,1]**2 + data[index1,2]**2)),bins=100)
+            #plt.show()
+            plt.figure(dpi=200)
+            index2 = index
+            #index2 = index
+            plt.hist(np.sqrt(x[index2]**2+y[index2]**2+z[index2]**2), bins=np.arange(0,0.65,0.01),label='recon')
+            plt.axvline(np.abs(file), color='red', label='real')
+            #plt.axvline(0.88 * 0.65,color='green',linewidth=1,label='bound')
+            plt.xlabel('Recon radius/m')
+            plt.ylabel('Num')
+            plt.legend()
+            recon = eval(axis)
+            plt.title('axis = %s, Radius=%+.2fm, std = %.4fm' % (axis, file, np.std(recon[index2]-np.abs(file) * np.sqrt(26)/5)))
+            plt.savefig('./fig/HistR_1MeV%+.2f_%s.pdf' % (file,axis))
+            #plt.show()
+            '''
+            x_recon = np.hstack((x_recon, x))
+            y_recon = np.hstack((y_recon, y))
+            z_recon = np.hstack((z_recon, z))
+            x_truth = np.hstack((x_truth, xt*np.ones_like(x)))
+            y_truth = np.hstack((y_truth, yt*np.ones_like(y)))
+            z_truth = np.hstack((z_truth, zt*np.ones_like(z)))
+        except:
+            pass
+    r_recon = np.sqrt(x_recon**2 + y_recon**2 + z_recon**2)
+    r_truth = np.sqrt(x_truth**2 + y_truth**2 + z_truth**2)
+    plt.figure(dpi=300)
+    from matplotlib import cm
+    from matplotlib.colors import ListedColormap, LinearSegmentedColormap
+    viridis = cm.get_cmap('jet', 256)
+    newcolors = viridis(np.linspace(0, 1, 65536))
+    pink = np.array([1, 1, 1, 1])
+    newcolors[:25, :] = pink
+    newcmp = ListedColormap(newcolors)
+    
+    H, xedges, yedges = np.histogram2d(r_truth, r_recon, bins=(np.arange(0,0.65,0.01), np.arange(0,0.65,0.01)))
+    plt.figure(dpi=300)
+    #plt.contourf(xedges[1:], yedges[1:], np.nan_to_num(H), cmap=newcmp)
+    plt.hist2d(r_truth, r_recon, bins=(np.arange(0,0.65,0.01), np.arange(0,0.65,0.01)), cmap=newcmp)
+    plt.colorbar()
+    plt.xlabel('Truth R/m')
+    plt.ylabel('Recon R/m')
+    '''
+    plt.figure()
+    plt.hist2d(z_truth/r_truth, z_recon/r_recon, cmap=newcmp)
+    plt.colorbar()
+    plt.xlabel('Truth theta/m')
+    plt.ylabel('Recon theta/m')
+    plt.show()
+    '''
+    return x_recon, y_recon, z_recon, x_truth, y_truth, z_truth
+#main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','x')
+#main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','y')
+#main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','z')
+
+#x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_point_axis_Recon_1t_new','x')
+x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_point_axis_Recon_1t_new_old','x')
+#main('result_1t_2.0MeV_dns_Recon_1t_10','y')
+#main('result_1t_2.0MeV_dns_Recon_1t_10','z')
+
+
+# In[166]:
+
+
+z_truth/r_truth
+
+
+# In[223]:
+
+
+# example of read 1 file
+def main(path,axis):
+    
+    x_recon = np.empty(0)
+    y_recon = np.empty(0)
+    z_recon = np.empty(0)
+    x_truth = np.empty(0)
+    y_truth = np.empty(0)
+    z_truth = np.empty(0)
+    E_recon = np.empty(0)
+    for i,file in enumerate(np.arange(0,0.65,0.01)):
+        h = tables.open_file('../%s/1t_%+.3f_%s.h5' % (path, file, axis),'r')
+        recondata = h.root.Recon
+        E1 = recondata[:]['E_sph_in']
+        x1 = recondata[:]['x_sph_in']
+        y1 = recondata[:]['y_sph_in']
+        z1 = recondata[:]['z_sph_in']
+        L1 = recondata[:]['Likelihood_in']
+        s1 = recondata[:]['success_in']
+
+        E2 = recondata[:]['E_sph_out']
+        x2 = recondata[:]['x_sph_out']
+        y2 = recondata[:]['y_sph_out']
+        z2 = recondata[:]['z_sph_out']
+        L2 = recondata[:]['Likelihood_out']
+        s2 = recondata[:]['success_out']
+
+        data = np.zeros((np.size(x1),4))
+
+        index = L1 < L2
+        data[index,0] = x1[index]
+        data[index,1] = y1[index]
+        data[index,2] = z1[index]
+        data[index,3] = E1[index]
+        data[~index,0] = x2[~index]
+        data[~index,1] = y2[~index]
+        data[~index,2] = z2[~index]
+        data[~index,3] = E2[~index]
+
+        xt = 0
+        yt = 0
+        zt = 0
+        if(axis=='x'):
+            xt = file
+        elif(axis=='y'):
+            yt = file
+        elif(axis=='z'):
+            zt = file
+        else:
+            print(haha)
+        x = data[(s1 * s2)!=0,0]
+        y = data[(s1 * s2)!=0,1]
+        z = data[(s1 * s2)!=0,2]
+        E = data[(s1 * s2)!=0,3]
+
+        '''
+        r = np.sqrt(x**2 + y**2 + z**2)
+        index = (r<0.64) & (r>0.01) & (~np.isnan(r))
+        H1, xedges, yedges = np.histogram2d(x[index]**2 + y[index]**2, z[index], bins=50)
+        X, Y = np.meshgrid(xedges[1:],yedges[1:])
+        plt.figure(dpi=200)
+        plt.contourf(X,Y,np.log(np.transpose(H1)+1))
+        plt.colorbar()
+        plt.xlabel(r'$x^2 + y^2/m^2$')
+        plt.ylabel('$z$/m')
+        plt.title('axis = %s, radius=%+.2fm' % (axis,file))
+        plt.savefig('./fig/Scatter_1MeV%+.2f_%s.pdf' % (file,axis))
+        plt.show()
+        #index1 = (~index) & (~np.isnan(x2))
+        #plt.hist(np.nan_to_num(np.sqrt(data[index1,0]**2 + data[index1,1]**2 + data[index1,2]**2)),bins=100)
+        #plt.show()
+        plt.figure(dpi=200)
+        index2 = index
+        #index2 = index
+        plt.hist(np.sqrt(x[index2]**2+y[index2]**2+z[index2]**2), bins=np.arange(0,0.65,0.01),label='recon')
+        plt.axvline(np.abs(file), color='red', label='real')
+        #plt.axvline(0.88 * 0.65,color='green',linewidth=1,label='bound')
+        plt.xlabel('Recon radius/m')
+        plt.ylabel('Num')
+        plt.legend()
+        recon = eval(axis)
+        plt.title('axis = %s, Radius=%+.2fm, std = %.4fm' % (axis, file, np.std(recon[index2]-np.abs(file) * np.sqrt(26)/5)))
+        plt.savefig('./fig/HistR_1MeV%+.2f_%s.pdf' % (file,axis))
+        #plt.show()
+        '''
+        x_recon = np.hstack((x_recon, x))
+        y_recon = np.hstack((y_recon, y))
+        z_recon = np.hstack((z_recon, z))
+        E_recon = np.hstack((E_recon, E))
+        x_truth = np.hstack((x_truth, xt*np.ones_like(x)))
+        y_truth = np.hstack((y_truth, yt*np.ones_like(y)))
+        z_truth = np.hstack((z_truth, zt*np.ones_like(z)))
+    r_recon = np.sqrt(x_recon**2 + y_recon**2 + z_recon**2)
+    r_truth = np.sqrt(x_truth**2 + y_truth**2 + z_truth**2)
+    plt.figure(dpi=300)
+    from matplotlib import cm
+    from matplotlib.colors import ListedColormap, LinearSegmentedColormap
+    viridis = cm.get_cmap('jet', 256)
+    newcolors = viridis(np.linspace(0, 1, 65536))
+    pink = np.array([1, 1, 1, 1])
+    newcolors[:25, :] = pink
+    newcmp = ListedColormap(newcolors)
+    
+    H, xedges, yedges = np.histogram2d(r_truth, r_recon, bins=(np.arange(0,0.65,0.01), np.arange(0,0.65,0.01)))
+    plt.figure(dpi=300)
+    #plt.contourf(xedges[1:], yedges[1:], np.nan_to_num(H), cmap=newcmp)
+    plt.hist2d(r_truth, r_recon, bins=(np.arange(0,0.65,0.01), np.arange(0,0.65,0.01)), cmap=newcmp)
+    plt.colorbar()
+    plt.xlabel('Truth R/m')
+    plt.ylabel('Recon R/m')
+    '''
+    plt.figure()
+    plt.hist2d(z_truth/r_truth, z_recon/r_recon, cmap=newcmp)
+    plt.colorbar()
+    plt.xlabel('Truth theta/m')
+    plt.ylabel('Recon theta/m')
+    plt.show()
+    '''
+    E_recon[E_recon>10]=10
+    plt.figure(dpi=300)
+    plt.scatter(r_truth, r_recon, c=E_recon, s=0.2,alpha=0.2,cmap=newcmp)
+    plt.colorbar()
+    plt.ylim([0,0.65])
+    plt.xlabel('Truth R')
+    plt.ylabel('Recon R')
+    plt.title('Energy recon map (Truth: 2MeV)')
+    return E_recon, x_recon, y_recon, z_recon, x_truth, y_truth, z_truth
+#main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','x')
+#main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','y')
+#main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','z')
+
+#x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_point_axis_Recon_1t_new','x')
+E_recon, x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_point_axis_Recon_1t_new','z')
+#main('result_1t_2.0MeV_dns_Recon_1t_10','y')
+#main('result_1t_2.0MeV_dns_Recon_1t_10','z')
+
+
+# In[190]:
+
+
+E_recon
+
+
+# In[220]:
+
+
+np.max(E_recon)
+
+
+# In[224]:
+
+
+from scipy.stats import norm
+
+
+# In[230]:
+
+
+norm.pdf(0,0,0.01)
+
+
+# In[239]:
+
+
+import tables
+h = tables.open_file('../test.h5')
+recondata = h.root.Recon
+E1 = recondata[:]['E_sph_in']
+x1 = recondata[:]['x_sph_in']
+y1 = recondata[:]['y_sph_in']
+z1 = recondata[:]['z_sph_in']
+L1 = recondata[:]['Likelihood_in']
+s1 = recondata[:]['success_in']
+
+E2 = recondata[:]['E_sph_out']
+x2 = recondata[:]['x_sph_out']
+y2 = recondata[:]['y_sph_out']
+z2 = recondata[:]['z_sph_out']
+L2 = recondata[:]['Likelihood_out']
+s2 = recondata[:]['success_out']
+
+data = np.zeros((np.size(x1),4))
+
+index = L1 < L2
+data[index,0] = x1[index]
+data[index,1] = y1[index]
+data[index,2] = z1[index]
+data[index,3] = E1[index]
+data[~index,0] = x2[~index]
+data[~index,1] = y2[~index]
+data[~index,2] = z2[~index]
+data[~index,3] = E2[~index]
+h.close()
+
+h1 = tables.open_file('/mnt/stage/jinp/Electron-0.h5')
+
+
+# In[254]:
+
+
+import uproot
+h = uproot.open('/mnt/stage/jinp/Electron-0.root')
+f = h['SimTriggerInfo']
+
+
+# In[255]:
+
+
+f.arrays
 
 
 # In[ ]:
