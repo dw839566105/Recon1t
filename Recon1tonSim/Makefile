@@ -2,7 +2,7 @@
 
 order:=100
 E:=point_axis
-prog:=Recon_1t_new
+prog:=Recon_1t_charge_template
 path:=/mnt/stage/douwei/Simulation/1t_root/$(E)/
 save:=result_1t_$(E)_$(prog)
 #sim:=$(wildcard $(path)1t_*.root)

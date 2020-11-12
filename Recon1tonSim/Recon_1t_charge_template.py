@@ -16,8 +16,6 @@ from scipy.stats import norm as normpdf
 import warnings
 warnings.filterwarnings('ignore')
 np.set_printoptions(precision=3, suppress=True)
-Gain = np.loadtxt('/mnt/stage/PMTGainCalib_Run0257toRun0271.txt',\
-        skiprows=0, usecols=np.hstack((np.arange(0,8), np.arange(9,14))))
 
 # physical constant (if need)
 Light_yield = 4285*0.88 # light yield
@@ -75,7 +73,7 @@ def Likelihood(vertex, *args):
     coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, N, pdf_tpl, N0, pdf_weight = args
     L1, E = Likelihood_PE(vertex, *(coeff_pe, PMT_pos, pe_array, cut_pe, N, pdf_tpl))
     L2 = Likelihood_Time(vertex, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time, N0, pdf_weight))
-    return L1 + L2 
+    return L1
 
 def Likelihood_PE(vertex, *args):
     coeff, PMT_pos, event_pe, cut, N, pdf_tpl = args
@@ -101,7 +99,6 @@ def Likelihood_PE(vertex, *args):
     c = np.diag((np.ones(cut)))
     x = LG.legval(cos_theta, c).T
     
-    k = np.zeros(cut)
     k = LG.legval(z, coeff_pe.T)
     
     expect = np.exp(np.dot(x,k))
@@ -118,65 +115,30 @@ def Likelihood_PE(vertex, *args):
     a2[(a2<1e-20) & (np.isnan(a2))] = 1e-20
     a2[(a2>1e50) & (np.isinf(a2))] = 1e50
     '''
-    a1 = np.atleast_2d(expect).T ** N * pdf_tpl
-    a1 = np.sum(a1,axis=1)
+    a0 = np.atleast_2d(expect).T ** N / (scipy.special.factorial(N))
+    a1 = np.nansum(a0 * pdf_tpl, axis=1)
     a2 = np.exp(-expect)
-    
+
+    '''
+    test = np.atleast_2d(expect).T ** np.atleast_2d(y).T / np.atleast_2d(scipy.special.factorial(y)).T
+    #print((np.atleast_2d(expect).T**np.atleast_2d(y).T).shape, np.atleast_2d(scipy.special.factorial(y)).shape)
+    print('Poisson:', a0[0])
+    print('N:', N[0])
+    print('Round:', y[0])
+    print('pdf:', pdf_tpl[0])
+    print('Poisson round:', test[0])
+    print(a1)
+    print(test.T)
+    #print(y)
+    exit()
+    '''
     L = - np.sum(np.sum(np.log(a1*a2)))
     if(np.isinf(L) or L>1e20):
         L = 1e20
     #print(vertex[0], np.log(nml))
-    return L, vertex[0]
-
-def Likelihood_PE1(vertex, *args):
-    coeff, PMT_pos, event_pe, cut, N, pdf_tpl = args
-    y = event_pe
-    
-    z = abs(vertex[1])
-    if z > 1-1e-3:
-        z = np.sign(z)-1e-3
-            
-    if z<1e-3:
-        # assume (0,0,1)
-        # cos_theta = PMT_pos[:,2] / norm(PMT_pos,axis=1)
-        vertex[1] = 1e-3
-        z = 1e-3
-        v = r2c(vertex[1:4])
-        cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
-    else:
-        v = r2c(vertex[1:4])
-        cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
-    
-    size = np.size(PMT_pos[:,0])
-    
-    c = np.diag((np.ones(cut)))
-    x = LG.legval(cos_theta, c).T
-    
-    k = np.zeros(cut)
-    k = LG.legval(z, coeff_pe.T)
-    
-    expect = np.exp(np.dot(x,k))
-    nml = np.sum(expect)/np.sum(y)
-    expect = expect/nml
-    k[0] = k[0] - np.log(nml)
-    vertex[0] = k[0]
-
-    '''
-    a1 = expect**y
-    a2 = np.exp(-expect)
-    a1[(a1<1e-20) & (np.isnan(a1))] = 1e-20
-    a1[(a1>1e50) & (np.isinf(a1))] = 1e50
-    a2[(a2<1e-20) & (np.isnan(a2))] = 1e-20
-    a2[(a2>1e50) & (np.isinf(a2))] = 1e50
-    '''
-    a1 = np.atleast_2d(expect).T ** N * pdf_tpl
-    a1 = np.sum(a1,axis=1)
-    a2 = np.exp(-expect)
-    
-    L = - np.sum(np.sum(np.log(a1*a2)))
-    if(np.isinf(L) or L>1e20):
-        L = 1e20
-    print(vertex[0], np.log(nml))
+    if(np.isnan(L)):
+        print(a1,a2)
+        exit()
     return L, vertex[0]
 
 def Likelihood_Time(vertex, *args):
@@ -193,10 +155,10 @@ def Likelihood_Time(vertex, *args):
         vertex[1] = 1e-3
         z = 1e-3
         v = r2c(vertex[1:4])
-        cos_theta = np.dot(v, PMT_pos.T) / (z*norm(PMT_pos,axis=1))
+        cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
     else:
         v = r2c(vertex[1:4])
-        cos_theta = np.dot(v, PMT_pos.T) / (z*norm(PMT_pos,axis=1))
+        cos_theta = np.dot(v,PMT_pos.T) / (z*norm(PMT_pos,axis=1))
     # accurancy and nan value
     cos_theta = np.nan_to_num(cos_theta)
     cos_theta[cos_theta>1] = 1
@@ -214,7 +176,7 @@ def Likelihood_Time(vertex, *args):
     k[0] = LG.legval(z, coeff_time.T)
     k[0,0] = vertex[4]
     T_i = np.dot(x, np.transpose(k))
-    L = np.nansum(Likelihood_quantile(y, T_i[:,0], 0.1, 2.6, N0, pdf))
+    L = -np.nansum(Likelihood_quantile(y, T_i[:,0], 0.1, 2.6, N0, pdf))
     #L = - np.nansum(TimeProfile(y, T_i[:,0]))
     return L
 
@@ -224,8 +186,9 @@ def Likelihood_quantile(y, T_i, tau, ts, N0, pdf):
     #R = (1-tau)*np.sum(less) + tau*np.sum(more)
     
     L = (T_i-y)*(y<T_i)*(1-tau) + (y-T_i)*(y>=T_i)*tau
-    L_norm = np.atleast_2d(L).T*N0*pdf/ts
-
+    nml = tau*(1-tau)/ts**N0
+    L_norm = np.exp(-np.atleast_2d(L).T*N0) * nml * pdf / ts
+    L = np.log(np.sum(L_norm, axis=1))
     return L_norm
 
 def ReadPMT():
@@ -291,23 +254,55 @@ def recon(fid, fout, *args):
     TruthTable = h5file.create_table(group, "Truth", TruthData, "Truth")
     truthdata = TruthTable.row
     # Loop for event
-    f = tables.open_file(fid)
-    charge = f.root.AnswerWF[:]['Charge']
-    Hittime = f.root.AnswerWF[:]['HitPosInWindow']
-    EventNo = f.root.AnswerWF[:]['TriggerNo']
-    CID = f.root.AnswerWF[:]['ChannelID']
-    EID = np.unique(EventNo)
-    #f = uproot.open(fid)
-    #a = f['SimTriggerInfo']
-    #for chl, Pkl, xt, yt, zt, Et in zip(a.array("PEList.PMTId"),
-    #                a.array("PEList.HitPosInWindow"),
-    #                a.array("truthList.x"),
-    #                a.array("truthList.y"),
-    #                a.array("truthList.z"),
-    #                a.array("truthList.EkMerged")):
-    for Event in EID:
-        pe_array = np.zeros(np.size(PMT_pos[:,1])) # Photons on each PMT (PMT size * 1 vector)
+
+    f = uproot.open(fid)
+    a = f['SimTriggerInfo']
+    Gain = 164
+    sigma = 40
+    for chl, Pkl, PE, xt, yt, zt, Et in zip(a.array("PEList.PMTId"),
+                    a.array("PEList.HitPosInWindow"),
+                    a.array("PEList.Charge"),
+                    a.array("truthList.x"),
+                    a.array("truthList.y"),
+                    a.array("truthList.z"),
+                    a.array("truthList.EkMerged")):
+        charge_array, cid = np.histogram(chl, bins=np.arange(31)-0.5, weights=PE)
+        charge_array /= Gain
+
+        pe_array, cid = np.histogram(chl, bins=np.arange(31))
+        
+        time_array = Pkl
+        fired_PMT = chl
+        #pe_array = np.round(charge_array)
+        pe_array = charge_array
+        
+        N0 = np.atleast_2d(np.round(PE/Gain)).T \
+            - np.atleast_2d(np.arange(-3,3)) # range: -10:10
+        sigma_array = sigma/Gain*np.sqrt(N0)
+        pdf_weight = normpdf.pdf(np.atleast_2d(PE/Gain).T,\
+            N0, \
+            np.atleast_2d(sigma_array)+1e-6 \
+            )
+        pdf_weight[N0<0] = 0
+        N0[N0<0] = 0
+        pdf_weight = pdf_weight/np.atleast_2d(np.sum(pdf_weight, axis=1)).T
+        
+        N = np.atleast_2d(np.round(pe_array)).T \
+            - np.atleast_2d(np.arange(-10,10)) # range: -10:10
+        sigma_array = sigma/Gain*np.sqrt(N)
+        pdf_pe = normpdf.pdf(np.atleast_2d(pe_array).T, 
+            N, \
+            np.atleast_2d(sigma_array)+1e-6 \
+            )
+        pdf_pe[N<0] = 0
+        N[N<0] = 0
+        pdf_pe = pdf_pe/np.atleast_2d(np.sum(pdf_pe, axis=1)).T
+        
+        #print(pe_array[-10], pdf_pe[-10], N[-10], sigma_array[-10])
+        #print(pe_array[-11], pdf_pe[-11], N[-11], sigma_array[-11])
+        #exit()
         '''
+        pe_array = np.zeros(np.size(PMT_pos[:,1])) # Photons on each PMT (PMT size * 1 vector)
         fired_PMT = np.zeros(0)     # Hit PMT (PMT Seq can be repeated)
         time_array = np.zeros(0, dtype=int)    # Time info (Hit number)
         for ch, pk in zip(chl, Pkl):
@@ -317,50 +312,17 @@ def recon(fid, fout, *args):
                 fired_PMT = np.hstack((fired_PMT, ch*np.ones(np.size(pk))))
             except:
                 pass
+        print(pe_array-c)
         '''
-        for Channel in np.arange(30):
-            #pe_array[Channel] = np.sum(pe_array[(EventNo==Event) & (CID == Channel)])
-            pe_array[Channel] = np.sum(charge[(EventNo==Event) & (CID == Channel)])
-            
-        
-        #print(pe_array)
-        #print(Gain[:,2])
-        Gain[:,2]=130
-        Gain[:,4]=40
-        pe_array = pe_array/Gain[:,2]
-        pe_array_tmp = np.round(pe_array)
-        time_array = Hittime[EventNo == Event]
-        fired_PMT = CID[EventNo == Event]
-        weight = charge[EventNo==Event]/Gain[fired_PMT, 2]
-        sigma = Gain[fired_PMT, 4]/Gain[fired_PMT, 2]*weight
-
-        N0 = np.atleast_2d(np.round(weight)).T \
-            - np.atleast_2d(np.arange(-3,3)) # range: -10:10
-        pdf_weight = normpdf.pdf(N0,\
-            np.atleast_2d(weight).T, \
-            np.atleast_2d(sigma).T+1e-6 \
-            )
-        pdf_weight[N0<0] = 0
-        pdf_weight = pdf_weight/np.atleast_2d(np.sum(pdf_weight, axis=1)).T
-        
-        mean = pe_array
-        sigma = Gain[:,4]/Gain[:,2]*pe_array
-        N = np.atleast_2d(np.round(pe_array)).T \
-            - np.atleast_2d(np.arange(-10,10)) # range: -10:10
-        pdf_tpl = normpdf.pdf(N,\
-            np.atleast_2d(mean).T, \
-            np.atleast_2d(sigma).T+1e-6 \
-            )
-        pdf_tpl[N<0] = 0
-        pdf_tpl = pdf_tpl/np.atleast_2d(np.sum(pdf_tpl, axis=1)).T
-        if np.sum(pe_array_tmp)!=0:
-            #for ii in np.arange(np.size(pe_array)):
-            #    truthdata['pes'] = pe_array[ii]
-            #    truthdata.append()
+        if np.sum(pe_array)!=0:
+            for ii in np.arange(np.size(pe_array)):
+                truthdata['pes'] = pe_array[ii]
+                truthdata.append()
             
             # Use MC to find the initial value
+            # pe_array = pe_array
             data = tp
-            rep = np.tile(pe_array_tmp,(np.size(bins[:,0]),1))
+            rep = np.tile(pe_array,(np.size(bins[:,0]),1))
             real_sum = np.sum(data, axis=1)
             corr = (data.T/(real_sum/np.sum(pe_array))).T
             L = np.nansum(-corr + np.log(corr)*pe_array, axis=1)
@@ -382,18 +344,20 @@ def recon(fid, fout, *args):
             x0_in[0][1:4] = bins[index]/1000/shell
             a = c2r(x0_in[0][1:4])
             x0_in = np.hstack((x0_in[0][0], a, x0_in[0][4]))
-            result_in = minimize(Likelihood, x0_in, method='SLSQP',bounds=((E_min, E_max), (0, 1), (None, None), (None, None), (None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, N, pdf_tpl, N0, pdf_weight))
-            L, E = Likelihood_PE1(result_in.x, *(coeff_pe, PMT_pos, pe_array, cut_pe, N, pdf_tpl))
-            result_in.x[0] = E
+            result_in = minimize(Likelihood, x0_in, method='SLSQP',bounds=((E_min, E_max), (0, 1), (None, None), (None, None), (None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, N, pdf_pe, N0, pdf_weight))
+            L,E = Likelihood_PE(result_in.x, *(coeff_pe, PMT_pos, pe_array, cut_pe, N, pdf_pe))
+            
             # new added avoid boundry:
             in2 = r2c(result_in.x[1:4])*shell
+
             recondata['x_sph_in'] = in2[0]
             recondata['y_sph_in'] = in2[1]
             recondata['z_sph_in'] = in2[2]
-            # recondata['E_sph_in'] = E
+            recondata['E_sph_in'] = E
             recondata['success_in'] = result_in.success
             recondata['Likelihood_in'] = result_in.fun
-
+            base_in = LG.legval(result_in.x[1], coeff_pe.T)
+            
             # outer recon
             # initial value
             vertex = x0_in.copy()
@@ -405,30 +369,22 @@ def recon(fid, fout, *args):
             data = np.zeros_like(mesh[:,0])
             for i in np.arange(np.size(data)):
                 vertex[2:4] = mesh[i]
-                data[i] = Likelihood(vertex, *(coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, N, pdf_tpl, N0, pdf_weight))
+                data[i] = Likelihood(vertex, *(coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, N, pdf_pe, N0, pdf_weight))
             index = np.where(data==np.min(data)) 
             
             x0_out = x0_in.copy()
             #x0_out[1:4] = r2c(np.array((0.92, mesh[index[0][0],0], mesh[index[0][0],1])))
             x0_out[1:4] = np.array((0.92, mesh[index[0][0],0], mesh[index[0][0],1]))
-            result_out = minimize(Likelihood, x0_out, method='SLSQP',bounds=((E_min, E_max), (0,1), (None, None), (None, None),(None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, N, pdf_tpl, N0, pdf_weight))
-            L, E = Likelihood_PE(result_out.x, *(coeff_pe, PMT_pos, pe_array, cut_pe, N, pdf_tpl))
-            result_out.x[0] = E
+            result_out = minimize(Likelihood, x0_out, method='SLSQP',bounds=((E_min, E_max), (0,1), (None, None), (None, None),(None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, N, pdf_pe, N0, pdf_weight))
+
+            L,E = Likelihood_PE(result_out.x, *(coeff_pe, PMT_pos, pe_array, cut_pe, N, pdf_pe))
             out2 = r2c(result_out.x[1:4]) * shell
             recondata['x_sph_out'] = out2[0]
             recondata['y_sph_out'] = out2[1]
             recondata['z_sph_out'] = out2[2]
-            # recondata['E_sph_out'] = E
+            recondata['E_sph_out'] = E
             recondata['success_out'] = result_out.success
             recondata['Likelihood_out'] = result_out.fun
-            
-            '''
-            x0_truth = x0_in.copy()
-            x0_truth[1:4]=c2r(np.array((0,0,0.6/0.65)))
-            result_truth = minimize(Likelihood, x0_truth, method='SLSQP',bounds=((E_min, E_max), (0,1), (None, None), (None, None),(None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
-
-            truth2 = r2c(result_truth.x[1:4]) * shell
-            '''
             
             base_in = LG.legval(result_in.x[1], coeff_pe.T)
             base_out = LG.legval(result_out.x[1], coeff_pe.T)
@@ -439,7 +395,13 @@ def recon(fid, fout, *args):
             #print(np.log(template_E))
             recondata['E_sph_in'] = np.exp(result_in.x[0] - base_in[0] + np.log(template_E) + np.log(2))
             recondata['E_sph_out'] = np.exp(result_out.x[0] - base_out[0] + np.log(template_E) + np.log(2))
-            
+            '''
+            x0_truth = x0_in.copy()
+            x0_truth[1:4]=c2r(np.array((0,0,0.6/0.65)))
+            result_truth = minimize(Likelihood, x0_truth, method='SLSQP',bounds=((E_min, E_max), (0,1), (None, None), (None, None),(None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
+
+            truth2 = r2c(result_truth.x[1:4]) * shell
+            '''
             print('-'*60)
             print(x0_in)
             print(x0_out)
