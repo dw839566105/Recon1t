@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[6]:
+# In[1]:
 
 
 import uproot
@@ -28,10 +28,10 @@ y_truth = np.array(y_truth)
 z_truth = np.array(z_truth)
 
 
-# In[88]:
+# In[2]:
 
 
-h = tables.open_file('wav1.h5')
+h = tables.open_file('truth1.h5')
 
 recondata = h.root.Recon
 E1 = recondata[:]['E_sph_in']
@@ -173,10 +173,89 @@ plt.show()
 theta_truth
 
 
-# In[28]:
+# In[34]:
 
 
-r_recon.shape
+h = tables.open_file('truth1.h5')
+
+recondata = h.root.Recon
+E1 = recondata[:]['E_sph_in']
+x1 = recondata[:]['x_sph_in']
+y1 = recondata[:]['y_sph_in']
+z1 = recondata[:]['z_sph_in']
+L1 = recondata[:]['Likelihood_in']
+s1 = recondata[:]['success_in']
+
+E2 = recondata[:]['E_sph_out']
+x2 = recondata[:]['x_sph_out']
+y2 = recondata[:]['y_sph_out']
+z2 = recondata[:]['z_sph_out']
+L2 = recondata[:]['Likelihood_out']
+s2 = recondata[:]['success_out']
+
+data = np.zeros((np.size(x1),4))
+
+index = L1 < L2
+data[index,0] = x1[index]
+data[index,1] = y1[index]
+data[index,2] = z1[index]
+data[index,3] = E1[index]
+
+data[~index,0] = x2[~index]
+data[~index,1] = y2[~index]
+data[~index,2] = z2[~index]
+data[~index,3] = E2[~index]
+
+x = data[(s1 * s2)!=0,0]
+y = data[(s1 * s2)!=0,1]
+z = data[(s1 * s2)!=0,2]
+E = data[(s1 * s2)!=0,3]
+
+from matplotlib import cm
+from matplotlib.colors import ListedColormap, LinearSegmentedColormap
+viridis = cm.get_cmap('jet', 256)
+newcolors = viridis(np.linspace(0, 1, 256))
+pink = np.array([1, 1, 1, 1])
+newcolors[:25, :] = pink
+newcmp = ListedColormap(newcolors)
+
+r = np.sqrt(x**2 + y**2 + z**2)
+index = (r<0.64) & (r>0.01) & (~np.isnan(r))
+H1, xedges, yedges = np.histogram2d(x[index]**2 + y[index]**2, z[index], bins=50)
+X, Y = np.meshgrid(xedges[1:],yedges[1:])
+plt.figure(dpi=200)
+#plt.contourf(X,Y,np.log(np.transpose(H1)+1), cmap=newcmp)
+plt.contourf(X, Y, np.log(H1+1).T, cmap=newcmp)
+plt.colorbar()
+plt.xlabel(r'$x^2 + y^2/m^2$')
+plt.ylabel('$z$/m')
+plt.title('Recon Vertex')
+plt.savefig('Vertex_0258.pdf')
+
+
+# In[33]:
+
+
+plt.figure(dpi=300)
+for i in np.arange(0.60, 0.20, -0.05):
+    plt.hist(E[(r<i) & (r>0.01)], bins=50, label = 'cut: r<%.2f m' % i)
+    plt.xlabel('Energy/MeV')
+    plt.ylabel('Number of Events')
+plt.legend()
+plt.title('Run0258')
+plt.savefig('Run0258_10.pdf')
+
+
+# In[25]:
+
+
+plt.hist(z/r)
+
+
+# In[36]:
+
+
+np.log(26+1.6/1.6)*1.6
 
 
 # In[ ]:

@@ -1,0 +1,11 @@
+dl:=/mnt/eternity/Jinping_1ton_Data/Charge
+run:=$(wildcard $(dl)/run*)
+files:=$(foreach n, $(run), $(wildcard $(n)/*.h5))
+#dst:=$(files:$(dl)/%=$(dl)_Recon/%)
+dst:=$(files:%.h5=%_Recon.h5)
+.PHONY: all
+
+all: $(dst)
+
+%_Recon.h5: %.h5
+	python3 Recon_h5.py $^ $@ > $@.log 2>&1

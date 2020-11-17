@@ -70,10 +70,10 @@ def Likelihood(vertex, *args):
     vertex[2]: theta
     vertex[3]: phi
     '''
-    coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, N, pdf_tpl, N0, pdf_weight = args
+    coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, N, pdf_tpl, PE = args
     L1, E = Likelihood_PE(vertex, *(coeff_pe, PMT_pos, pe_array, cut_pe, N, pdf_tpl))
-    L2 = Likelihood_Time(vertex, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time, N0, pdf_weight))
-    return L1
+    L2 = Likelihood_Time(vertex, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time, PE))
+    return L1 + L2
 
 def Likelihood_PE(vertex, *args):
     coeff, PMT_pos, event_pe, cut, N, pdf_tpl = args
@@ -142,7 +142,7 @@ def Likelihood_PE(vertex, *args):
     return L, vertex[0]
 
 def Likelihood_Time(vertex, *args):
-    coeff, PMT_pos, fired, time, cut, N0, pdf = args
+    coeff, PMT_pos, fired, time, cut, PE = args
     y = time
     # fixed axis
     z = abs(vertex[1])
@@ -176,18 +176,18 @@ def Likelihood_Time(vertex, *args):
     k[0] = LG.legval(z, coeff_time.T)
     k[0,0] = vertex[4]
     T_i = np.dot(x, np.transpose(k))
-    L = -np.nansum(Likelihood_quantile(y, T_i[:,0], 0.1, 2.6, N0, pdf))
+    L = -np.nansum(Likelihood_quantile(y, T_i[:,0], 0.1, 2.6, PE))
     #L = - np.nansum(TimeProfile(y, T_i[:,0]))
     return L
 
-def Likelihood_quantile(y, T_i, tau, ts, N0, pdf):
+def Likelihood_quantile(y, T_i, tau, ts, PE):
     #less = T_i[y<T_i] - y[y<T_i]
     #more = y[y>=T_i] - T_i[y>=T_i]    
     #R = (1-tau)*np.sum(less) + tau*np.sum(more)
-    
+
     L = (T_i-y)*(y<T_i)*(1-tau) + (y-T_i)*(y>=T_i)*tau
-    nml = tau*(1-tau)/ts**N0
-    L_norm = np.exp(-np.atleast_2d(L).T*N0) * nml * pdf / ts
+    nml = tau*(1-tau)/ts**PE
+    L_norm = np.exp(-np.atleast_2d(L).T*PE) * nml / ts
     L = np.log(np.sum(L_norm, axis=1))
     return L_norm
 
@@ -266,8 +266,8 @@ def recon(fid, fout, *args):
                     a.array("truthList.y"),
                     a.array("truthList.z"),
                     a.array("truthList.EkMerged")):
+        PE /= Gain
         charge_array, cid = np.histogram(chl, bins=np.arange(31)-0.5, weights=PE)
-        charge_array /= Gain
 
         pe_array, cid = np.histogram(chl, bins=np.arange(31))
         
@@ -275,9 +275,9 @@ def recon(fid, fout, *args):
         fired_PMT = chl
         #pe_array = np.round(charge_array)
         pe_array = charge_array
-        
+        '''
         N0 = np.atleast_2d(np.round(PE/Gain)).T \
-            - np.atleast_2d(np.arange(-3,3)) # range: -10:10
+            - np.atleast_2d(np.arange(-3,3)) # range: -3:3
         sigma_array = sigma/Gain*np.sqrt(N0)
         pdf_weight = normpdf.pdf(np.atleast_2d(PE/Gain).T,\
             N0, \
@@ -285,7 +285,7 @@ def recon(fid, fout, *args):
             )
         pdf_weight[N0<0] = 0
         N0[N0<0] = 0
-        pdf_weight = pdf_weight/np.atleast_2d(np.sum(pdf_weight, axis=1)).T
+        '''
         
         N = np.atleast_2d(np.round(pe_array)).T \
             - np.atleast_2d(np.arange(-10,10)) # range: -10:10
@@ -344,7 +344,7 @@ def recon(fid, fout, *args):
             x0_in[0][1:4] = bins[index]/1000/shell
             a = c2r(x0_in[0][1:4])
             x0_in = np.hstack((x0_in[0][0], a, x0_in[0][4]))
-            result_in = minimize(Likelihood, x0_in, method='SLSQP',bounds=((E_min, E_max), (0, 1), (None, None), (None, None), (None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, N, pdf_pe, N0, pdf_weight))
+            result_in = minimize(Likelihood, x0_in, method='SLSQP',bounds=((E_min, E_max), (0, 1), (None, None), (None, None), (None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, N, pdf_pe, PE))
             L,E = Likelihood_PE(result_in.x, *(coeff_pe, PMT_pos, pe_array, cut_pe, N, pdf_pe))
             
             # new added avoid boundry:
@@ -369,13 +369,13 @@ def recon(fid, fout, *args):
             data = np.zeros_like(mesh[:,0])
             for i in np.arange(np.size(data)):
                 vertex[2:4] = mesh[i]
-                data[i] = Likelihood(vertex, *(coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, N, pdf_pe, N0, pdf_weight))
+                data[i] = Likelihood(vertex, *(coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, N, pdf_pe, PE))
             index = np.where(data==np.min(data)) 
             
             x0_out = x0_in.copy()
             #x0_out[1:4] = r2c(np.array((0.92, mesh[index[0][0],0], mesh[index[0][0],1])))
             x0_out[1:4] = np.array((0.92, mesh[index[0][0],0], mesh[index[0][0],1]))
-            result_out = minimize(Likelihood, x0_out, method='SLSQP',bounds=((E_min, E_max), (0,1), (None, None), (None, None),(None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, N, pdf_pe, N0, pdf_weight))
+            result_out = minimize(Likelihood, x0_out, method='SLSQP',bounds=((E_min, E_max), (0,1), (None, None), (None, None),(None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, N, pdf_pe, PE))
 
             L,E = Likelihood_PE(result_out.x, *(coeff_pe, PMT_pos, pe_array, cut_pe, N, pdf_pe))
             out2 = r2c(result_out.x[1:4]) * shell
