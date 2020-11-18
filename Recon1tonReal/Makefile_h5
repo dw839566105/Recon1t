@@ -1,11 +1,14 @@
-dl:=/mnt/eternity/Jinping_1ton_Data/Charge
-run:=$(wildcard $(dl)/run*)
+dl:=/mnt/eternity/Jinping_1ton_Data
+run:=$(wildcard $(dl)/Charge/run*)
 files:=$(foreach n, $(run), $(wildcard $(n)/*.h5))
 #dst:=$(files:$(dl)/%=$(dl)_Recon/%)
 dst:=$(files:%.h5=%_Recon.h5)
 .PHONY: all
 
-all: $(dst)
+dst1:=$(subst Charge,Recon,$(files))
 
-%_Recon.h5: %.h5
-	python3 Recon_h5.py $^ $@ > $@.log 2>&1
+all: $(dst1)
+
+$(dl)/Recon/%.h5: $(dl)/Charge/%.h5
+	mkdir -p $(shell dirname "$@")
+	echo python3 Recon_h5.py $^ $@ > $@.log 2>&1
