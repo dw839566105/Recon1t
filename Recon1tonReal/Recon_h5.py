@@ -16,6 +16,7 @@ from scipy.stats import norm as normpdf
 from scipy.spatial import distance
 import warnings
 warnings.filterwarnings('ignore')
+sys.stdout.flush()
 np.set_printoptions(precision=3, suppress=True)
 
 Gain = np.loadtxt('/mnt/stage/PMTGainCalib_Run0257toRun0271.txt',\
@@ -137,7 +138,7 @@ def Likelihood_quantile(y, T_i, tau, ts, PE):
     nml = tau*(1-tau)/ts**PE
     L_norm = np.exp(-np.atleast_2d(L).T * PE) * nml / ts
     L = np.log(np.sum(L_norm, axis=1))
-    return L_norm
+    return L
 
 def recon(fid, fout, *args):
 
@@ -322,6 +323,7 @@ def recon(fid, fout, *args):
             print('-'*60)
         recondata.append()
         event_count = event_count + 1
+        sys.stdout.flush()
 
     # Flush into the output file
     ReconTable.flush()
