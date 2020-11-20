@@ -148,7 +148,7 @@ def recon(fid, fout, *args):
     fid: root reference file convert to .h5
     fout: output file
     '''
-    PMT_pos, tp, bins = args
+    PMT_pos, tp_in, bins = args
     event_count = 0
     # Create the output file and the group
     print(fid) # filename
@@ -187,6 +187,23 @@ def recon(fid, fout, *args):
     CID = f.root.AnswerWF[:]['ChannelID']
     EID = np.unique(Events)
 
+    # define outer grid
+    vertex = np.ones(5)
+    vertex[1] = 0.01
+    k = LG.legval(vertex[1], coeff_pe.T)
+    vertex[0] = k[0]
+    NN = 50
+    y = np.linspace(0, 2*np.pi, NN)
+    x = np.linspace(0, np.pi, NN)
+    xx, yy = np.meshgrid(x, y, sparse=False)
+    mesh = np.hstack((xx.reshape(-1,1), yy.reshape(-1,1)))
+    tp_out = np.zeros((np.size(mesh[:,0]), 30))
+    for i in np.arange(tp_out.shape[0]):
+        vertex[2:4] = mesh[i]
+        z, x = Calc_basis(vertex, PMT_pos, cut_pe)
+        # Recover expect
+        expect = np.exp(np.dot(x,k))
+        tp_out[i] = expect
     # Gain = 164
     # sigma = 40
     for Event in EID:
@@ -232,10 +249,10 @@ def recon(fid, fout, *args):
         if np.sum(pe_array)!=0:
             # Use MC to find the initial value
             rep = np.tile(pe_array,(np.size(bins[:,0]),1))
-            real_sum = np.sum(tp, axis=1)
-            corr = (tp.T/(real_sum/np.sum(pe_array))).T
-            L = np.nansum(-corr + np.log(corr)*pe_array, axis=1)
-            index = np.where(L == np.max(L))[0][0]
+            real_sum = np.sum(tp_in, axis=1)
+            corr = (tp_in.T/(real_sum/np.sum(pe_array))).T
+            L = -np.nansum(-corr + np.log(corr)*pe_array, axis=1)
+            index = np.where(L == np.min(L))[0][0]
 
             # Constraints (log scale)
             E_min = -10
@@ -259,7 +276,7 @@ def recon(fid, fout, *args):
             recondata['z_sph_in'] = in2[2]
             recondata['success_in'] = result_in.success
             recondata['Likelihood_in'] = result_in.fun
-            
+            '''
             # outer recon
             # initial value is a 30*30 grid at 0.92 * radius
             vertex = x0_in[0]
@@ -274,9 +291,16 @@ def recon(fid, fout, *args):
                 data[i] = Likelihood(vertex, *(coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, N, pdf_pe, charge_array))
             index = np.where(data==np.min(data)) 
             
+            '''
             # choose best vertex to outer recon
+            rep = np.tile(pe_array,(np.size(mesh[:,0]),1))
+            real_sum = np.sum(tp_out, axis=1)
+            corr = (tp_out.T/(real_sum/np.sum(pe_array))).T
+            L = -np.nansum(-corr + np.log(corr)*pe_array, axis=1)
+            index = np.where(L == np.min(L))[0][0]
+            
             x0_out = x0_in[0]
-            x0_out[1:4] = np.array((0.92, mesh[index[0][0],0], mesh[index[0][0],1]))
+            x0_out[1:4] = np.array((0.92, mesh[index,0], mesh[index,1]))
             result_out = minimize(Likelihood, x0_out, method='SLSQP',bounds=((E_min, E_max), (0,1), (None, None), (None, None),(None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe, N, pdf_pe, charge_array))
             z, x = (Calc_basis(result_out.x, PMT_pos, cut_pe))
             L, E_out = Likelihood_PE(z, x, coeff_pe, pe_array, cut_pe, N, pdf_pe)
