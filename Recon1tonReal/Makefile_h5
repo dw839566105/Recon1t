@@ -11,4 +11,4 @@ all: $(dst1)
 
 $(dl)/Recon/%.h5: $(dl)/Charge/%.h5
 	mkdir -p $(shell dirname "$@")
-	echo python3 Recon_h5.py $^ $@ > $@.log 2>&1
+	python3 Recon_h5.py $^ $@ > $@.log 2>&1

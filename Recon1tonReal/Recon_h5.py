@@ -136,7 +136,7 @@ def Likelihood_quantile(y, T_i, tau, ts, PE):
     # since lucy ddm is not sparse, use PE as weight
     L = (T_i-y) * (y<T_i) * (1-tau) + (y-T_i) * (y>=T_i) * tau
     nml = tau*(1-tau)/ts**PE
-    L_norm = np.exp(-np.atleast_2d(L).T * PE) * nml / ts
+    L_norm = np.exp(-1/ts * np.atleast_2d(L).T * PE) * nml
     L = np.log(np.sum(L_norm, axis=1))
     return L
 
