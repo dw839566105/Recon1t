@@ -132,13 +132,19 @@ def Likelihood_quantile(y, T_i, tau, ts, PE):
     # less = T_i[y<T_i] - y[y<T_i]
     # more = y[y>=T_i] - T_i[y>=T_i]    
     # R = (1-tau)*np.sum(less) + tau*np.sum(more)
-    
     # since lucy ddm is not sparse, use PE as weight
-    L = (T_i-y) * (y<T_i) * (1-tau) + (y-T_i) * (y>=T_i) * tau
-    nml = tau*(1-tau)/ts**PE
-    L_norm = np.exp(-np.atleast_2d(L).T * PE) * nml / ts
-    L = np.log(np.sum(L_norm, axis=1))
-    return L
+    R = (T_i-y) * (y<T_i) * (1-tau) + (y-T_i) * (y>=T_i) * tau
+
+    # normalized factor: (tau*(1-tau)/ts)**q
+    nml = (tau*(1-tau)/ts)**PE
+    # exp form
+    # L_norm = np.exp(-1/ts * R * PE) * nml
+    # L = np.log(L_norm)
+    #
+    # In fact, np.sum(np.log(nml)) is a constant
+    L0 = -1/ts * R * PE + np.log(nml)
+    # L0 = -1/ts * R * PE
+    return L0
 
 def recon(fid, fout, *args):
 
