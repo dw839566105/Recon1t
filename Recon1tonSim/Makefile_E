@@ -1,0 +1,9 @@
+a:= $(shell seq -f "%.3f" 0.00 0.01 0.65)
+.PHONY: all
+
+target:=$(a:%=./test_E/%_z.h5)
+all: $(target)
+
+./test_E/%_z.h5:/mnt/stage/douwei/Simulation/1t_root/point_axis/1t_+%_z.root
+	mkdir -p ./test_E
+	python3 Recon_test_E.py $^ $@ $* > $@.log 2>&1

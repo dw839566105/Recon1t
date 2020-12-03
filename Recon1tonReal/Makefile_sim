@@ -1,0 +1,13 @@
+dl:=/mnt/stage/douwei/Simulation/1t_root/point_axis_10_h5_charge/
+files:=$(wildcard $(dl)*[^n].h5)
+#files:=$(foreach n, $(run), $(wildcard $(n)/*.h5))
+#dst:=$(files:$(dl)/%=$(dl)_Recon/%)
+dst:=$(files:%.h5=%_Recon.h5)
+.PHONY: all
+
+#dst:=$(subst charge,recon,$(files))
+
+all: $(dst)
+
+$(dl)%_Recon.h5: $(dl)%.h5
+	python3 Recon_h5_sim.py $^ $@ PMTGainCalib_Run0257toRun0271.txt > $@.log 2>&1
