@@ -1,0 +1,7 @@
+srl:=$(wildcard /mnt/stage/douwei/Simulation/1t_root/point_10/1t_+0.2*.root)
+dstl:=$(srl:%=%.test2.h5)
+
+all: $(dstl)
+
+%.test2.h5: %
+	python3 Recon_fixed1.py $^ $@

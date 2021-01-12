@@ -1,0 +1,4 @@
+
+(Recon_test_E.py:90815): Gdk-CRITICAL **: 16:32:40.467: gdk_cursor_new_for_display: assertion 'GDK_IS_DISPLAY (display)' failed
+Wront arguments!
+Usage: python Recon.py MCFileName[.root] outputFileName[.h5]

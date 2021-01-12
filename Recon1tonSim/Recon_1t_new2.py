@@ -5,11 +5,12 @@ import scipy.stats as stats
 import os,sys
 import tables
 import scipy.io as scio
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import uproot, argparse
 from scipy.optimize import minimize
 from scipy import interpolate
-from numpy.polynomial import legendre as LG
+#from numpy.polynomial import legendre as LG
+from numba import jit
 from scipy import special
 from scipy.linalg import norm
 from scipy.stats import norm as normpdf
@@ -24,6 +25,28 @@ Gain = np.loadtxt('/mnt/stage/PMTGainCalib_Run0257toRun0271.txt',\
 
 # boundaries
 shell = 0.65
+
+@jit(nopython=True)
+def legval(x, c):
+    """
+    stole from the numerical part of numpy.polynomial.legendre
+
+    """
+    if len(c) == 1:
+        return c[0]
+    elif len(c) == 2:
+        c0 = c[0]
+        c1 = c[1]
+    else:
+        nd = len(c)
+        c0 = c[-2]
+        c1 = c[-1]
+        for i in range(3, len(c) + 1):
+            tmp = c0
+            nd = nd - 1
+            c0 = c[-i] - (c1*(nd - 1))/nd
+            c1 = tmp + (c1*x*(2*nd - 1))/nd
+    return c0 + c1*x
 
 def readtpl():
     # Read MC grid recon result
@@ -86,12 +109,13 @@ def Calc_basis(vertex, PMT_pos, cut):
     cos_theta[np.isnan(cos_theta)] = 1 # for v in detector center    
     
     # Generate Legendre basis
-    x = LG.legval(cos_theta, np.diag((np.ones(cut)))).T 
+    # x = legval(cos_theta, np.diag((np.ones(cut)))).T 
+    x = legval(cos_theta, np.eye(cut).reshape((cut,cut,1))).T
     return z, x
     
 def Likelihood_PE(z, x, coeff, pe_array, cut):
     # Recover coefficient
-    k = LG.legval(z, coeff_pe.T)
+    k = legval(z, coeff_pe.T)
     # Recover expect
     expect = np.exp(np.dot(x,k))
     # Energy fit 
@@ -117,7 +141,7 @@ def Likelihood_Time(z, x, T0, coeff, fired_PMT, time_array, cut):
     x = x[fired_PMT][:,:cut]
     
     # Recover coefficient
-    k = np.atleast_2d(LG.legval(z, coeff_time.T)).T
+    k = np.atleast_2d(legval(z, coeff_time.T)).T
     k[0,0] = T0
     
     # Recover expect
@@ -149,7 +173,6 @@ def recon(fid, fout, *args):
     fout: output file
     '''
     PMT_pos, tp_in, bins = args
-    event_count = 0
     # Create the output file and the group
     print(fid) # filename
     class ReconData(tables.IsDescription):
@@ -184,7 +207,7 @@ def recon(fid, fout, *args):
     # define outer grid
     vertex = np.ones(5)
     vertex[1] = 0.01
-    k = LG.legval(vertex[1], coeff_pe.T)
+    k = legval(vertex[1], coeff_pe.T)
     vertex[0] = k[0]
     NN = 50
     y = np.linspace(0, 2*np.pi, NN)
@@ -202,7 +225,8 @@ def recon(fid, fout, *args):
     # sigma = 40
     f = uproot.open(fid)
     a = f['SimTriggerInfo']
-    for chl, Pkl, xt, yt, zt, Et in zip(a.array("PEList.PMTId"),
+    for EventNo, chl, Pkl, xt, yt, zt, Et in zip(a.array("TriggerNo"),
+                    a.array("PEList.PMTId"),
                     a.array("PEList.HitPosInWindow"),
                     a.array("truthList.x"),
                     a.array("truthList.y"),
@@ -270,6 +294,7 @@ def recon(fid, fout, *args):
             recondata['z_sph_in'] = in2[2]
             recondata['success_in'] = result_in.success
             recondata['Likelihood_in'] = result_in.fun
+            recondata['t0_in'] = result_in.x[4]
             '''
             # outer recon
             # initial value is a 30*30 grid at 0.92 * radius
@@ -305,10 +330,11 @@ def recon(fid, fout, *args):
             recondata['z_sph_out'] = out2[2]
             recondata['success_out'] = result_out.success
             recondata['Likelihood_out'] = result_out.fun
+            recondata['t0_out'] = result_out.x[4]
             
             # 0-th order (Energy intercept)
-            base_in = LG.legval(result_in.x[1], coeff_pe.T)
-            base_out = LG.legval(result_out.x[1], coeff_pe.T)
+            base_in = legval(result_in.x[1], coeff_pe.T)
+            base_out = legval(result_out.x[1], coeff_pe.T)
 
             print('-'*60)
             print(f'inner: {np.exp(E_in - base_in[0] + np.log(2))}')
@@ -319,9 +345,9 @@ def recon(fid, fout, *args):
 
             print('inner')
             print(f'Template likelihood: {-np.max(L)}')
-            print('%d vertex: [%+.2f, %+.2f, %+.2f] radius: %+.2f, Likelihood: %+.6f' % (event_count, in2[0], in2[1], in2[2], norm(in2), result_in.fun))
+            print('%d vertex: [%+.2f, %+.2f, %+.2f] radius: %+.2f, Likelihood: %+.6f' % (EventNo, in2[0], in2[1], in2[2], norm(in2), result_in.fun))
             print('outer')
-            print('%d vertex: [%+.2f, %+.2f, %+.2f] radius: %+.2f, Likelihood: %+.6f' % (event_count, out2[0], out2[1], out2[2], norm(out2), result_out.fun))
+            print('%d vertex: [%+.2f, %+.2f, %+.2f] radius: %+.2f, Likelihood: %+.6f' % (EventNo, out2[0], out2[1], out2[2], norm(out2), result_out.fun))
             
         else:
             recondata['x_sph_in'] = 0
@@ -339,8 +365,8 @@ def recon(fid, fout, *args):
             recondata['Likelihood_out'] = 0
             print('empty event!')
             print('-'*60)
+        recondata['EventID'] = EventNo
         recondata.append()
-        event_count = event_count + 1
         sys.stdout.flush()
 
     # Flush into the output file

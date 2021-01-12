@@ -1377,7 +1377,7 @@ plt.ylabel('Recon')
 plt.show()
 
 
-# In[120]:
+# In[224]:
 
 
 # example of read 1 file
@@ -1493,20 +1493,135 @@ def main(path,axis):
 #main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','y')
 #main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','z')
 
-x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_ground_axis_Recon_1t_new_pe','x')
-x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_ground_axis_Recon_1t_new_pe','y')
-x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_ground_axis_Recon_1t_new_pe','z')
+x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_point_axis_Recon_1t_new','x')
+x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_point_axis_Recon_1t_new','y')
+x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_point_axis_Recon_1t_new','z')
 #main('result_1t_2.0MeV_dns_Recon_1t_10','y')
 #main('result_1t_2.0MeV_dns_Recon_1t_10','z')
 
 
-# In[62]:
+# In[228]:
 
 
-def cstm_autumn_r(x):
-    return plt.cm.autumn_r((np.clip(x,2,10)-2)/8.)
-x = np.linspace(0, 15)
-plt.scatter(x,x, c=cstm_autumn_r(x))
+# example of read 1 file
+def main(path,axis):
+    
+    x_recon = np.empty(0)
+    y_recon = np.empty(0)
+    z_recon = np.empty(0)
+    x_truth = np.empty(0)
+    y_truth = np.empty(0)
+    z_truth = np.empty(0)
+    
+    for i,file in enumerate(np.arange(0,0.65,0.01)):
+        try:
+            h = tables.open_file('../%s/1t_%+.3f_%s.h5' % (path, file, axis),'r')
+            recondata = h.root.Recon
+            E1 = recondata[:]['E_sph_in']
+            x1 = recondata[:]['x_sph_in']
+            y1 = recondata[:]['y_sph_in']
+            z1 = recondata[:]['z_sph_in']
+            L1 = recondata[:]['Likelihood_in']
+            s1 = recondata[:]['success_in']
+
+            E2 = recondata[:]['E_sph_out']
+            x2 = recondata[:]['x_sph_out']
+            y2 = recondata[:]['y_sph_out']
+            z2 = recondata[:]['z_sph_out']
+            L2 = recondata[:]['Likelihood_out']
+            s2 = recondata[:]['success_out']
+
+            data = np.zeros((np.size(x1),3))
+
+            index = L1 < L2
+            data[index,0] = x1[index]
+            data[index,1] = y1[index]
+            data[index,2] = z1[index]
+
+            data[~index,0] = x2[~index]
+            data[~index,1] = y2[~index]
+            data[~index,2] = z2[~index]
+
+            xt = 0
+            yt = 0
+            zt = 0
+            if(axis=='x'):
+                xt = file
+            elif(axis=='y'):
+                yt = file
+            elif(axis=='z'):
+                zt = file
+            else:
+                print(haha)
+            x = data[(s1 * s2)!=0,0]
+            y = data[(s1 * s2)!=0,1]
+            z = data[(s1 * s2)!=0,2]
+
+            '''
+            r = np.sqrt(x**2 + y**2 + z**2)
+            index = (r<0.64) & (r>0.01) & (~np.isnan(r))
+            H1, xedges, yedges = np.histogram2d(x[index]**2 + y[index]**2, z[index], bins=50)
+            X, Y = np.meshgrid(xedges[1:],yedges[1:])
+            plt.figure(dpi=200)
+            plt.contourf(X,Y,np.log(np.transpose(H1)+1))
+            plt.colorbar()
+            plt.xlabel(r'$x^2 + y^2/m^2$')
+            plt.ylabel('$z$/m')
+            plt.title('axis = %s, radius=%+.2fm' % (axis,file))
+            plt.savefig('./fig/Scatter_1MeV%+.2f_%s.pdf' % (file,axis))
+            plt.show()
+            #index1 = (~index) & (~np.isnan(x2))
+            #plt.hist(np.nan_to_num(np.sqrt(data[index1,0]**2 + data[index1,1]**2 + data[index1,2]**2)),bins=100)
+            #plt.show()
+            plt.figure(dpi=200)
+            index2 = index
+            #index2 = index
+            plt.hist(np.sqrt(x[index2]**2+y[index2]**2+z[index2]**2), bins=np.arange(0,0.65,0.01),label='recon')
+            plt.axvline(np.abs(file), color='red', label='real')
+            #plt.axvline(0.88 * 0.65,color='green',linewidth=1,label='bound')
+            plt.xlabel('Recon radius/m')
+            plt.ylabel('Num')
+            plt.legend()
+            recon = eval(axis)
+            plt.title('axis = %s, Radius=%+.2fm, std = %.4fm' % (axis, file, np.std(recon[index2]-np.abs(file) * np.sqrt(26)/5)))
+            plt.savefig('./fig/HistR_1MeV%+.2f_%s.pdf' % (file,axis))
+            #plt.show()
+            '''
+            x_recon = np.hstack((x_recon, x))
+            y_recon = np.hstack((y_recon, y))
+            z_recon = np.hstack((z_recon, z))
+            x_truth = np.hstack((x_truth, xt*np.ones_like(x)))
+            y_truth = np.hstack((y_truth, yt*np.ones_like(y)))
+            z_truth = np.hstack((z_truth, zt*np.ones_like(z)))
+        except:
+            pass
+    r_recon = np.sqrt(x_recon**2 + y_recon**2 + z_recon**2)
+    r_truth = np.sqrt(x_truth**2 + y_truth**2 + z_truth**2)
+    plt.figure(dpi=300)
+    from matplotlib import cm
+    from matplotlib.colors import ListedColormap, LinearSegmentedColormap
+    viridis = cm.get_cmap('jet', 256)
+    newcolors = viridis(np.linspace(0, 1, 65536))
+    pink = np.array([1, 1, 1, 1])
+    newcolors[:25, :] = pink
+    newcmp = ListedColormap(newcolors)
+
+    plt.hist2d(r_truth, r_recon, bins=(np.arange(0,0.65,0.01), np.arange(0,0.65,0.01)), cmap=newcmp)
+    plt.colorbar()
+    plt.xlabel('Truth r/m')
+    plt.ylabel('Recon r/m')
+    plt.title('Vertex recon by SH on %s axis' % axis)
+    plt.show()
+    return x_recon, y_recon, z_recon, x_truth, y_truth, z_truth
+#main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','x')
+#main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','y')
+#main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','z')
+
+x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_point_axis_Recon_1t_new2','x')
+x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_point_axis_Recon_1t_new2','y')
+x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_point_axis_Recon_1t_new2','z')
+#main('result_1t_2.0MeV_dns_Recon_1t_10','y')
+#main('result_1t_2.0MeV_dns_Recon_1t_10','z')
 
 
 # In[56]:
@@ -2115,8 +2230,1371 @@ f = h['SimTriggerInfo']
 f.arrays
 
 
+# In[256]:
+
+
+E_mean = []
+E_std = []
+radius = np.arange(0.00,0.60,0.01)
+rr = []
+for i in radius:
+    try:
+        h = tables.open_file('/mnt/stage/douwei/Simulation/1t_root/point_axis_10_h5_charge/1t_+%.3f_x_Recon.h5' % i)
+        recondata = h.root.Recon
+        E1 = recondata[:]['E_sph_in']
+        x1 = recondata[:]['x_sph_in']
+        y1 = recondata[:]['y_sph_in']
+        z1 = recondata[:]['z_sph_in']
+        L1 = recondata[:]['Likelihood_in']
+        s1 = recondata[:]['success_in']
+
+        E2 = recondata[:]['E_sph_out']
+        x2 = recondata[:]['x_sph_out']
+        y2 = recondata[:]['y_sph_out']
+        z2 = recondata[:]['z_sph_out']
+        L2 = recondata[:]['Likelihood_out']
+        s2 = recondata[:]['success_out']
+
+        data = np.zeros((np.size(x1),4))
+
+        index = L1 < L2
+        data[index,0] = x1[index]
+        data[index,1] = y1[index]
+        data[index,2] = z1[index]
+        data[index,3] = E1[index]
+        data[~index,0] = x2[~index]
+        data[~index,1] = y2[~index]
+        data[~index,2] = z2[~index]
+        data[~index,3] = E2[~index]
+
+        x = data[(s1 * s2)!=0, 0]
+        y = data[(s1 * s2)!=0, 1]
+        z = data[(s1 * s2)!=0, 2]
+        E = data[(s1 * s2)!=0, 3]
+
+        r = np.sqrt(x**2 + y**2 + z**2)
+        h.close()
+        E_mean.append(np.mean(E[r<0.6]/2.161*2))
+        E_std.append(np.std(E[r<0.6]/2.161*2))
+        rr.append(i)
+    except:
+        pass
+plt.figure(dpi=300)
+plt.errorbar(rr, np.array(E_mean), np.array(E_std), marker='s', label = 'x', alpha = 0.5, ms=2, mew=4)
+
+E_mean = []
+E_std = []
+radius = np.arange(0.00,0.60,0.01)
+rr = []
+for i in radius:
+    try:
+        h = tables.open_file('/mnt/stage/douwei/Simulation/1t_root/point_axis_10_h5_charge/1t_+%.3f_z_Recon.h5' % i)
+        recondata = h.root.Recon
+        E1 = recondata[:]['E_sph_in']
+        x1 = recondata[:]['x_sph_in']
+        y1 = recondata[:]['y_sph_in']
+        z1 = recondata[:]['z_sph_in']
+        L1 = recondata[:]['Likelihood_in']
+        s1 = recondata[:]['success_in']
+
+        E2 = recondata[:]['E_sph_out']
+        x2 = recondata[:]['x_sph_out']
+        y2 = recondata[:]['y_sph_out']
+        z2 = recondata[:]['z_sph_out']
+        L2 = recondata[:]['Likelihood_out']
+        s2 = recondata[:]['success_out']
+
+        data = np.zeros((np.size(x1),4))
+
+        index = L1 < L2
+        data[index,0] = x1[index]
+        data[index,1] = y1[index]
+        data[index,2] = z1[index]
+        data[index,3] = E1[index]
+        data[~index,0] = x2[~index]
+        data[~index,1] = y2[~index]
+        data[~index,2] = z2[~index]
+        data[~index,3] = E2[~index]
+
+        x = data[(s1 * s2)!=0, 0]
+        y = data[(s1 * s2)!=0, 1]
+        z = data[(s1 * s2)!=0, 2]
+        E = data[(s1 * s2)!=0, 3]
+
+        r = np.sqrt(x**2 + y**2 + z**2)
+        h.close()
+        E_mean.append(np.mean(E[r<0.6]/2.161*2))
+        E_std.append(np.std(E[r<0.6]/2.161*2))
+        rr.append(i)
+    except:
+        pass
+    
+plt.errorbar(rr, np.array(E_mean), np.array(E_std), marker='s', label = 'z', alpha = 0.5, ms=2, mew=4)    
+plt.xlabel('Radius/m')
+plt.ylabel('Energy/MeV')
+plt.legend()
+plt.show()
+
+
+# In[230]:
+
+
+
+
+
+# In[242]:
+
+
+import ROOT
+import numpy as np
+t = ROOT.TChain('SimpleAnalysis')
+for i in np.arange(50):
+    if not i%10:
+        print(i)
+    #try:
+    #t.Add('/home/wuyy/WORK/PreAnalysis_output_old/run259/PreAnalysis_Run259_File%d.root' % i)
+    t.Add('/mnt/neutrino/02_PreAnalysis_wuyy/run259/PreAnalysis_Run259_File%d.root' % i)
+    #except:
+    #    pass
+x = []
+y = []
+z = []
+E = []
+for event in t:
+    x.append(event.ReconX)
+    y.append(event.ReconY)
+    z.append(event.ReconZ)
+    E.append(event.ReconE)
+import matplotlib.pyplot as plt
+xb = np.array(x)
+yb = np.array(y)
+zb = np.array(z)
+Eb = np.array(E)
+rb = np.sqrt(xb**2 + yb**2 + zb**2)/1000
+#plt.hist(np.array(E), bins=np.arange(0,300,10))
+for i in np.arange(0.60, 0.20, -0.05):
+    plt.hist(Eb[(rb<i) & (rb>0.01)]/60, np.arange(0,300,5)/60, label = 'cut: r<%.2f m' % i)
+    plt.xlabel('Energy: PE')
+    plt.ylabel('Number of Events')
+plt.legend()
+plt.title('Run0259')
+plt.savefig('Run0259_10.pdf')
+plt.show()
+
+
+# In[248]:
+
+
+plt.figure(dpi=300)
+for i in np.arange(0.60, 0.20, -0.05):
+    plt.hist(Eb[(rb<i) & (rb>0.01)], np.arange(30,270,5), label = 'cut: r<%.2f m' % i)
+    plt.xlabel('Energy: PE')
+    plt.ylabel('Number of Events')
+plt.legend()
+plt.title('Run0259')
+plt.savefig('Run0259_10.pdf')
+plt.show()
+
+
+# In[258]:
+
+
+import tables
+def loadE(file):
+    h = tables.open_file(file)
+    recondata = h.root.Recon
+    E1 = recondata[:]['E_sph_in']
+    x1 = recondata[:]['x_sph_in']
+    y1 = recondata[:]['y_sph_in']
+    z1 = recondata[:]['z_sph_in']
+    L1 = recondata[:]['Likelihood_in']
+    s1 = recondata[:]['success_in']
+
+    E2 = recondata[:]['E_sph_out']
+    x2 = recondata[:]['x_sph_out']
+    y2 = recondata[:]['y_sph_out']
+    z2 = recondata[:]['z_sph_out']
+    L2 = recondata[:]['Likelihood_out']
+    s2 = recondata[:]['success_out']
+
+    data = np.zeros((np.size(x1),4))
+
+    index = L1 < L2
+    data[index,0] = x1[index]
+    data[index,1] = y1[index]
+    data[index,2] = z1[index]
+    data[index,3] = E1[index]
+    data[~index,0] = x2[~index]
+    data[~index,1] = y2[~index]
+    data[~index,2] = z2[~index]
+    data[~index,3] = E2[~index]
+    h.close()
+    return data[(s1*s2)!=0]
+
+plt.figure(dpi=300, figsize=(8,6))
+radius = np.arange(0, 0.65, 0.02)
+h = tables.open_file('/mnt/stage/douwei/Simulation/1t_root/point_axis/1t_+0.000_xQ.h5')
+A0 = h.root.PETruthData[:]['Q']
+E0 = np.sum(np.reshape(A0,(-1,30)), axis=1)
+nml = np.mean(E0)/2
+h.close()
+data = []
+err = []
+data1 = []
+err1 = []
+data2 = []
+err2 = []
+
+test = []
+testx = []
+for i in radius:
+    h = tables.open_file('/mnt/stage/douwei/Simulation/1t_root/point_axis/1t_+%.3f_zQ.h5' % i)
+    A = h.root.PETruthData[:]['Q']
+    E = np.sum(np.reshape(A,(-1,30)), axis=1)
+    data.append(np.mean(E/nml))
+    err.append(np.std(E/nml))
+    h.close()
+    recon = loadE('../result_1t_point_axis_Recon_1t_new2/1t_+%.3f_z.h5' % i)*1000
+    r = np.linalg.norm(recon[:,:3], axis=1)
+   
+    if(i==0):
+        nml = np.mean(recon[r<0.6,3])/2
+        data1.append(np.mean(recon[r<0.6,3]/nml))
+        err1.append(np.std(recon[r<0.6,3]/nml))
+        test.append(r) 
+        testx.append(recon[:,2])
+    else:
+        data1.append(np.mean(recon[r<0.6,3]/nml))
+        err1.append(np.std(recon[r<0.6,3]/nml))
+        test.append(r)
+        testx.append(recon[:,2])
+plt.boxplot(test, positions=np.array(np.arange(len(test)))*20, sym='k.', widths=10)
+plt.xlabel('Truth radius/mm')
+plt.ylabel('Recon radius/mm')
+plt.xticks(np.arange(0,0.65,0.05)*1000, np.arange(0, 650, 50, dtype=int))
+plt.yticks(np.arange(0,0.65,0.05)*1000)
+plt.title('Box plot of truth vs recon radius (z axis)')
+plt.savefig('Box_rr_z.pdf')
+plt.show()
+
+plt.figure(dpi=150, figsize=(8,12))
+plt.boxplot(testx, positions=np.array(np.arange(len(testx)))*20, sym='k.', widths=10)
+plt.xlabel('Truth z/mm')
+plt.ylabel('Recon z/mm')
+plt.yticks(np.arange(-0.65,0.65,0.05)*1000)
+plt.xticks(np.arange(0,0.65,0.05)*1000, np.arange(0, 650, 50, dtype=int))
+plt.title('Box plot of truth vs recon radius (z axis)')
+plt.savefig('Box_zz_z.pdf')
+plt.show()
+
+data = []
+err = []
+data1 = []
+err1 = []
+data2 = []
+err2 = []
+
+test = []
+
+xx = []
+yy = []
+zz = []
+xx1 = []
+yy1 = []
+zz1 = []
+
+e1 = []
+e2 = []
+e3 = []
+
+ee1 = []
+ee2 = []
+ee3 = []
+
+radius = np.arange(0, 0.60, 0.01)
+for i in radius:
+    h = tables.open_file('/mnt/stage/douwei/Simulation/1t_root/point_axis/1t_+%.3f_zQ.h5' % i)
+    A = h.root.PETruthData[:]['Q']
+    E = np.sum(np.reshape(A,(-1,30)), axis=1)
+    data.append(np.mean(E/nml))
+    err.append(np.std(E/nml))
+    h.close()
+    recon = loadE('../result_1t_point_axis_Recon_1t_new2/1t_+%.3f_z.h5' % i)*1000
+    r = np.linalg.norm(recon[:,:3], axis=1)/1000
+   
+    data1.append(np.mean(r[r<0.6]))
+    err1.append(np.std(r[r<0.6]))
+    data2.append(np.mean(r))
+    err2.append(np.std(r))
+    test.append(r)
+
+    xx.append(np.mean(recon[r<0.6,0]/1000))
+    yy.append(np.mean(recon[r<0.6,1]/1000))
+    zz.append(np.mean(recon[r<0.6,2]/1000 - i))
+    e1.append(np.std(recon[r<0.6,0]/1000))
+    e2.append(np.std(recon[r<0.6,1]/1000))
+    e3.append(np.std(recon[r<0.6,2]/1000 - i))    
+
+    xx1.append(np.mean(recon[:,0]/1000))
+    yy1.append(np.mean(recon[:,1]/1000))
+    zz1.append(np.mean(recon[:,2]/1000 - i))
+    ee1.append(np.std(recon[:,0]/1000))
+    ee2.append(np.std(recon[:,1]/1000))
+    ee3.append(np.std(recon[:,2]/1000 - i))
+    
+plt.figure(dpi=300)
+#plt.plot(radius, np.array(data)-radius,'.', label='Scaled total PE', alpha=0.5)
+plt.plot(radius, np.array(data1)-radius,'.', label='SH recon (cut: r<0.6m)', alpha=0.5)
+plt.plot(radius, np.array(data2)-radius,'.', label='SH recon (without cut)', alpha=0.5)
+plt.xlabel('Radius/mm')
+plt.ylabel('Recon radius bias/m')
+plt.title('Recon radius bias (z axis)')
+plt.legend()
+plt.savefig('Recon_r_bias_z1.pdf')
+plt.show()
+
+
+plt.figure(dpi=300)
+#plt.plot(radius, np.array(data)-radius,'.', label='Scaled total PE', alpha=0.5)
+plt.plot(radius, np.array(err1),'.', label='SH recon (cut: r<0.6m)', alpha=0.5)
+plt.plot(radius, np.array(err2),'.', label='SH recon (without cut)', alpha=0.5)
+plt.xlabel('Radius/mm')
+plt.ylabel('Recon radius resolution/m')
+plt.legend()
+plt.title('Recon radius resolution (z axis)')
+plt.savefig('Recon_r_resolution_z1.pdf')
+plt.show()
+
+plt.figure(dpi=300)
+plt.plot(radius, xx, '.', alpha=0.5, label='x')
+plt.plot(radius, yy, '.', alpha=0.5, label='y')
+plt.plot(radius, zz, '.', alpha=0.5, label='z')
+plt.xlabel('Truth radius/mm')
+plt.ylabel('Recon vertex bias/m')
+plt.legend()
+plt.title('Recon vertex bias (cut: r<0.6 m) (z axis)')
+plt.savefig('Recon_vertex_bias_cut_z1.pdf')
+plt.show()
+
+plt.figure(dpi=300)
+plt.plot(radius, xx1, '.', alpha=0.5, label='x')
+plt.plot(radius, yy1, '.', alpha=0.5, label='y')
+plt.plot(radius, zz1, '.', alpha=0.5, label='z')
+plt.xlabel('Truth radius/mm')
+plt.ylabel('Recon vertex bias/m')
+plt.legend()
+plt.title('Recon vertex bias (without cut) (z axis)')
+plt.savefig('Recon_vertex_bias_z1.pdf')
+plt.show()
+
+plt.figure(dpi=300)
+plt.plot(radius, e1, '.', alpha=0.5, label='x')
+plt.plot(radius, e2, '.', alpha=0.5, label='y')
+plt.plot(radius, e3, '.', alpha=0.5, label='z')
+plt.xlabel('Truth radius/mm')
+plt.ylabel('Recon vertex resolution/m')
+plt.legend()
+plt.title('Recon vertex resolution (cut: r<0.6 m) (z axis)')
+plt.savefig('Recon_vertex_resolution_cut_z1.pdf')
+plt.show()
+
+plt.figure(dpi=300)
+plt.plot(radius, ee1, '.', alpha=0.5, label='x')
+plt.plot(radius, ee2, '.', alpha=0.5, label='y')
+plt.plot(radius, ee3, '.', alpha=0.5, label='z')
+plt.xlabel('Truth radius/mm')
+plt.ylabel('Recon vertex resolution/m')
+plt.legend()
+plt.title('Recon vertex resolution (without cut) (z axis)')
+plt.savefig('Recon_vertex_resolution_z1.pdf')
+plt.show()
+
+
+# In[271]:
+
+
+import tables
+def loadE(file):
+    h = tables.open_file(file)
+    recondata = h.root.Recon
+    E1 = recondata[:]['E_sph_in']
+    x1 = recondata[:]['x_sph_in']
+    y1 = recondata[:]['y_sph_in']
+    z1 = recondata[:]['z_sph_in']
+    L1 = recondata[:]['Likelihood_in']
+    s1 = recondata[:]['success_in']
+
+    E2 = recondata[:]['E_sph_out']
+    x2 = recondata[:]['x_sph_out']
+    y2 = recondata[:]['y_sph_out']
+    z2 = recondata[:]['z_sph_out']
+    L2 = recondata[:]['Likelihood_out']
+    s2 = recondata[:]['success_out']
+
+    data = np.zeros((np.size(x1),4))
+
+    index = L1 < L2
+    data[index,0] = x1[index]
+    data[index,1] = y1[index]
+    data[index,2] = z1[index]
+    data[index,3] = E1[index]
+    data[~index,0] = x2[~index]
+    data[~index,1] = y2[~index]
+    data[~index,2] = z2[~index]
+    data[~index,3] = E2[~index]
+    h.close()
+    return data[(s1*s2)!=0]
+
+plt.figure(dpi=300, figsize=(8,6))
+radius = np.arange(0, 0.65, 0.02)
+h = tables.open_file('/mnt/stage/douwei/Simulation/1t_root/point_axis/1t_+0.000_xQ.h5')
+A0 = h.root.PETruthData[:]['Q']
+E0 = np.sum(np.reshape(A0,(-1,30)), axis=1)
+nml = np.mean(E0)/2
+h.close()
+data = []
+err = []
+data1 = []
+err1 = []
+data2 = []
+err2 = []
+
+test = []
+testx = []
+for i in radius:
+    h = tables.open_file('/mnt/stage/douwei/Simulation/1t_root/point_axis/1t_+%.3f_zQ.h5' % i)
+    A = h.root.PETruthData[:]['Q']
+    E = np.sum(np.reshape(A,(-1,30)), axis=1)
+    data.append(np.mean(E/nml))
+    err.append(np.std(E/nml))
+    h.close()
+    recon = loadE('/mnt/stage/douwei/Simulation/1t_root/point_axis_10_h5_charge/1t_+%.3f_z_Recon.h5' % i)*1000
+    r = np.linalg.norm(recon[:,:3], axis=1)
+   
+    if(i==0):
+        nml = np.mean(recon[r<0.6,3])/2
+        data1.append(np.mean(recon[r<0.6,3]/nml))
+        err1.append(np.std(recon[r<0.6,3]/nml))
+        test.append(r) 
+        testx.append(recon[:,2])
+    else:
+        data1.append(np.mean(recon[r<0.6,3]/nml))
+        err1.append(np.std(recon[r<0.6,3]/nml))
+        test.append(r)
+        testx.append(recon[:,2])
+plt.boxplot(test, positions=np.array(np.arange(len(test)))*20, sym='k.', widths=10)
+plt.xlabel('Truth radius/mm')
+plt.ylabel('Recon radius/mm')
+plt.xticks(np.arange(0,0.65,0.05)*1000, np.arange(0, 650, 50, dtype=int))
+plt.yticks(np.arange(0,0.65,0.05)*1000)
+plt.title('Box plot of truth vs recon radius (z axis)')
+plt.savefig('Box_rr_z.pdf')
+plt.show()
+
+plt.figure(dpi=150, figsize=(8,12))
+plt.boxplot(testx, positions=np.array(np.arange(len(testx)))*20, sym='k.', widths=10)
+plt.xlabel('Truth z/mm')
+plt.ylabel('Recon z/mm')
+plt.yticks(np.arange(-0.65,0.65,0.05)*1000)
+plt.xticks(np.arange(0,0.65,0.05)*1000, np.arange(0, 650, 50, dtype=int))
+plt.title('Box plot of truth vs recon radius (z axis)')
+plt.savefig('Box_zz_z.pdf')
+plt.show()
+
+data = []
+err = []
+data1 = []
+err1 = []
+data2 = []
+err2 = []
+
+test = []
+
+xx = []
+yy = []
+zz = [z
+xx1 = []
+yy1 = []
+zz1 = []
+
+e1 = []
+e2 = []
+e3 = []
+
+ee1 = []
+ee2 = []
+ee3 = []
+
+radius = np.arange(0, 0.60, 0.01)
+for i in radius:
+    h = tables.open_file('/mnt/stage/douwei/Simulation/1t_root/point_axis/1t_+%.3f_zQ.h5' % i)
+    A = h.root.PETruthData[:]['Q']
+    E = np.sum(np.reshape(A,(-1,30)), axis=1)
+    data.append(np.mean(E/nml))
+    err.append(np.std(E/nml))
+    h.close()
+    recon = loadE('/mnt/stage/douwei/Simulation/1t_root/point_axis_10_h5_charge/1t_+%.3f_z_Recon.h5' % i)*1000
+    r = np.linalg.norm(recon[:,:3], axis=1)/1000
+   
+    data1.append(np.mean(r[r<0.6]))
+    err1.append(np.std(r[r<0.6]))
+    data2.append(np.mean(r))
+    err2.append(np.std(r))
+    test.append(r)
+
+    xx.append(np.mean(recon[r<0.6,0]/1000))
+    yy.append(np.mean(recon[r<0.6,1]/1000))
+    zz.append(np.mean(recon[r<0.6,2]/1000 - i))
+    e1.append(np.std(recon[r<0.6,0]/1000))
+    e2.append(np.std(recon[r<0.6,1]/1000))
+    e3.append(np.std(recon[r<0.6,2]/1000 - i))    
+
+    xx1.append(np.mean(recon[:,0]/1000))
+    yy1.append(np.mean(recon[:,1]/1000))
+    zz1.append(np.mean(recon[:,2]/1000 - i))
+    ee1.append(np.std(recon[:,0]/1000))
+    ee2.append(np.std(recon[:,1]/1000))
+    ee3.append(np.std(recon[:,2]/1000 - i))
+    
+plt.figure(dpi=300)
+#plt.plot(radius, np.array(data)-radius,'.', label='Scaled total PE', alpha=0.5)
+plt.plot(radius, np.array(data1)-radius,'.', label='SH recon (cut: r<0.6m)', alpha=0.5)
+plt.plot(radius, np.array(data2)-radius,'.', label='SH recon (without cut)', alpha=0.5)
+plt.xlabel('Radius/mm')
+plt.ylabel('Recon radius bias/m')
+plt.title('Recon radius bias (z axis)')
+plt.legend()
+plt.savefig('Recon_r_bias_z1.pdf')
+plt.show()
+
+
+plt.figure(dpi=300)
+#plt.plot(radius, np.array(data)-radius,'.', label='Scaled total PE', alpha=0.5)
+plt.plot(radius, np.array(err1),'.', label='SH recon (cut: r<0.6m)', alpha=0.5)
+plt.plot(radius, np.array(err2),'.', label='SH recon (without cut)', alpha=0.5)
+plt.xlabel('Radius/mm')
+plt.ylabel('Recon radius resolution/m')
+plt.legend()
+plt.title('Recon radius resolution (z axis)')
+plt.savefig('Recon_r_resolution_z1.pdf')
+plt.show()
+
+plt.figure(dpi=300)
+plt.plot(radius, xx, '.', alpha=0.5, label='x')
+plt.plot(radius, yy, '.', alpha=0.5, label='y')
+plt.plot(radius, zz, '.', alpha=0.5, label='z')
+plt.xlabel('Truth radius/mm')
+plt.ylabel('Recon vertex bias/m')
+plt.legend()
+plt.title('Recon vertex bias (cut: r<0.6 m) (z axis)')
+plt.savefig('Recon_vertex_bias_cut_z1.pdf')
+plt.show()
+
+plt.figure(dpi=300)
+plt.plot(radius, xx1, '.', alpha=0.5, label='x')
+plt.plot(radius, yy1, '.', alpha=0.5, label='y')
+plt.plot(radius, zz1, '.', alpha=0.5, label='z')
+plt.xlabel('Truth radius/mm')
+plt.ylabel('Recon vertex bias/m')
+plt.legend()
+plt.title('Recon vertex bias (without cut) (z axis)')
+plt.savefig('Recon_vertex_bias_z1.pdf')
+plt.show()
+
+plt.figure(dpi=300)
+plt.plot(radius, e1, '.', alpha=0.5, label='x')
+plt.plot(radius, e2, '.', alpha=0.5, label='y')
+plt.plot(radius, e3, '.', alpha=0.5, label='z')
+plt.xlabel('Truth radius/mm')
+plt.ylabel('Recon vertex resolution/m')
+plt.legend()
+plt.title('Recon vertex resolution (cut: r<0.6 m) (z axis)')
+plt.savefig('Recon_vertex_resolution_cut_z1.pdf')
+plt.show()
+
+plt.figure(dpi=300)
+plt.plot(radius, ee1, '.', alpha=0.5, label='x')
+plt.plot(radius, ee2, '.', alpha=0.5, label='y')
+plt.plot(radius, ee3, '.', alpha=0.5, label='z')
+plt.xlabel('Truth radius/mm')
+plt.ylabel('Recon vertex resolution/m')
+plt.legend()
+plt.title('Recon vertex resolution (without cut) (z axis)')
+plt.savefig('Recon_vertex_resolution_z1.pdf')
+plt.show()
+
+
+# In[269]:
+
+
+# example of read 1 file
+def main(path,axis):
+    
+    x_recon = np.empty(0)
+    y_recon = np.empty(0)
+    z_recon = np.empty(0)
+    x_truth = np.empty(0)
+    y_truth = np.empty(0)
+    z_truth = np.empty(0)
+    
+    for i,file in enumerate(np.arange(0,0.65,0.01)):
+        try:
+            h = tables.open_file('%s/1t_%+.3f_%s_Recon.h5' % (path, file, axis),'r')
+            recondata = h.root.Recon
+            E1 = recondata[:]['E_sph_in']
+            x1 = recondata[:]['x_sph_in']
+            y1 = recondata[:]['y_sph_in']
+            z1 = recondata[:]['z_sph_in']
+            L1 = recondata[:]['Likelihood_in']
+            s1 = recondata[:]['success_in']
+
+            E2 = recondata[:]['E_sph_out']
+            x2 = recondata[:]['x_sph_out']
+            y2 = recondata[:]['y_sph_out']
+            z2 = recondata[:]['z_sph_out']
+            L2 = recondata[:]['Likelihood_out']
+            s2 = recondata[:]['success_out']
+
+            data = np.zeros((np.size(x1),3))
+
+            index = L1 < L2
+            data[index,0] = x1[index]
+            data[index,1] = y1[index]
+            data[index,2] = z1[index]
+
+            data[~index,0] = x2[~index]
+            data[~index,1] = y2[~index]
+            data[~index,2] = z2[~index]
+
+            xt = 0
+            yt = 0
+            zt = 0
+            if(axis=='x'):
+                xt = file
+            elif(axis=='y'):
+                yt = file
+            elif(axis=='z'):
+                zt = file
+            else:
+                print(haha)
+            x = data[(s1 * s2)!=0,0]
+            y = data[(s1 * s2)!=0,1]
+            z = data[(s1 * s2)!=0,2]
+
+            '''
+            r = np.sqrt(x**2 + y**2 + z**2)
+            index = (r<0.64) & (r>0.01) & (~np.isnan(r))
+            H1, xedges, yedges = np.histogram2d(x[index]**2 + y[index]**2, z[index], bins=50)
+            X, Y = np.meshgrid(xedges[1:],yedges[1:])
+            plt.figure(dpi=200)
+            plt.contourf(X,Y,np.log(np.transpose(H1)+1))
+            plt.colorbar()
+            plt.xlabel(r'$x^2 + y^2/m^2$')
+            plt.ylabel('$z$/m')
+            plt.title('axis = %s, radius=%+.2fm' % (axis,file))
+            plt.savefig('./fig/Scatter_1MeV%+.2f_%s.pdf' % (file,axis))
+            plt.show()
+            #index1 = (~index) & (~np.isnan(x2))
+            #plt.hist(np.nan_to_num(np.sqrt(data[index1,0]**2 + data[index1,1]**2 + data[index1,2]**2)),bins=100)
+            #plt.show()
+            plt.figure(dpi=200)
+            index2 = index
+            #index2 = index
+            plt.hist(np.sqrt(x[index2]**2+y[index2]**2+z[index2]**2), bins=np.arange(0,0.65,0.01),label='recon')
+            plt.axvline(np.abs(file), color='red', label='real')
+            #plt.axvline(0.88 * 0.65,color='green',linewidth=1,label='bound')
+            plt.xlabel('Recon radius/m')
+            plt.ylabel('Num')
+            plt.legend()
+            recon = eval(axis)
+            plt.title('axis = %s, Radius=%+.2fm, std = %.4fm' % (axis, file, np.std(recon[index2]-np.abs(file) * np.sqrt(26)/5)))
+            plt.savefig('./fig/HistR_1MeV%+.2f_%s.pdf' % (file,axis))
+            #plt.show()
+            '''
+            x_recon = np.hstack((x_recon, x))
+            y_recon = np.hstack((y_recon, y))
+            z_recon = np.hstack((z_recon, z))
+            x_truth = np.hstack((x_truth, xt*np.ones_like(x)))
+            y_truth = np.hstack((y_truth, yt*np.ones_like(y)))
+            z_truth = np.hstack((z_truth, zt*np.ones_like(z)))
+        except:
+            pass
+    r_recon = np.sqrt(x_recon**2 + y_recon**2 + z_recon**2)
+    r_truth = np.sqrt(x_truth**2 + y_truth**2 + z_truth**2)
+    plt.figure(dpi=300)
+    from matplotlib import cm
+    from matplotlib.colors import ListedColormap, LinearSegmentedColormap
+    viridis = cm.get_cmap('jet', 256)
+    newcolors = viridis(np.linspace(0, 1, 65536))
+    pink = np.array([1, 1, 1, 1])
+    newcolors[:25, :] = pink
+    newcmp = ListedColormap(newcolors)
+
+    plt.hist2d(r_truth, r_recon, bins=(np.arange(0,0.65,0.01), np.arange(0,0.65,0.01)), cmap=newcmp)
+    plt.colorbar()
+    plt.xlabel('Truth r/m')
+    plt.ylabel('Recon r/m')
+    plt.title('Vertex recon by SH on %s axis' % axis)
+    plt.show()
+    return x_recon, y_recon, z_recon, x_truth, y_truth, z_truth
+#main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','x')
+#main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','y')
+#main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','z')
+
+x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('/mnt/stage/douwei/Simulation/1t_root/point_axis_10_h5_charge/','x')
+x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('/mnt/stage/douwei/Simulation/1t_root/point_axis_10_h5_charge/','y')
+x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('/mnt/stage/douwei/Simulation/1t_root/point_axis_10_h5_charge/','z')
+#main('result_1t_2.0MeV_dns_Recon_1t_10','y')
+#main('result_1t_2.0MeV_dns_Recon_1t_10','z')
+
+
+# In[275]:
+
+
+import tables
+def loadE(file):
+    h = tables.open_file(file)
+    recondata = h.root.Recon
+    E1 = recondata[:]['E_sph_in']
+    x1 = recondata[:]['x_sph_in']
+    y1 = recondata[:]['y_sph_in']
+    z1 = recondata[:]['z_sph_in']
+    L1 = recondata[:]['Likelihood_in']
+    s1 = recondata[:]['success_in']
+
+    E2 = recondata[:]['E_sph_out']
+    x2 = recondata[:]['x_sph_out']
+    y2 = recondata[:]['y_sph_out']
+    z2 = recondata[:]['z_sph_out']
+    L2 = recondata[:]['Likelihood_out']
+    s2 = recondata[:]['success_out']
+
+    data = np.zeros((np.size(x1),4))
+
+    index = L1 < L2
+    data[index,0] = x1[index]
+    data[index,1] = y1[index]
+    data[index,2] = z1[index]
+    data[index,3] = E1[index]
+    data[~index,0] = x2[~index]
+    data[~index,1] = y2[~index]
+    data[~index,2] = z2[~index]
+    data[~index,3] = E2[~index]
+    h.close()
+    return data[(s1*s2)!=0]
+
+plt.figure(dpi=300, figsize=(8,6))
+radius = np.arange(0, 0.65, 0.02)
+h = tables.open_file('/mnt/stage/douwei/Simulation/1t_root/point_axis/1t_+0.000_xQ.h5')
+A0 = h.root.PETruthData[:]['Q']
+E0 = np.sum(np.reshape(A0,(-1,30)), axis=1)
+nml = np.mean(E0)/2
+h.close()
+data = []
+err = []
+data1 = []
+err1 = []
+data2 = []
+err2 = []
+
+test = []
+testx = []
+for i in radius:
+    h = tables.open_file('/mnt/stage/douwei/Simulation/1t_root/point_axis/1t_+%.3f_xQ.h5' % i)
+    A = h.root.PETruthData[:]['Q']
+    E = np.sum(np.reshape(A,(-1,30)), axis=1)
+    data.append(np.mean(E/nml))
+    err.append(np.std(E/nml))
+    h.close()
+    recon = loadE('/mnt/stage/douwei/Simulation/1t_root/point_axis_10_h5_charge/1t_+%.3f_x_Recon.h5' % i)*1000
+    r = np.linalg.norm(recon[:,:3], axis=1)
+   
+    if(i==0):
+        nml = np.mean(recon[r<0.6,3])/2
+        data1.append(np.mean(recon[r<0.6,3]/nml))
+        err1.append(np.std(recon[r<0.6,3]/nml))
+        test.append(r) 
+        testx.append(recon[:,0])
+    else:
+        data1.append(np.mean(recon[r<0.6,3]/nml))
+        err1.append(np.std(recon[r<0.6,3]/nml))
+        test.append(r)
+        testx.append(recon[:,0])
+plt.boxplot(test, positions=np.array(np.arange(len(test)))*20, sym='k.', widths=10)
+plt.xlabel('Truth radius/mm')
+plt.ylabel('Recon radius/mm')
+plt.xticks(np.arange(0,0.65,0.05)*1000, np.arange(0, 650, 50, dtype=int))
+plt.yticks(np.arange(0,0.65,0.05)*1000)
+plt.title('Box plot of truth vs recon radius (z axis)')
+plt.savefig('Box_rr_z.pdf')
+plt.show()
+
+plt.figure(dpi=150, figsize=(8,12))
+plt.boxplot(testx, positions=np.array(np.arange(len(testx)))*20, sym='k.', widths=10)
+plt.xlabel('Truth x/mm')
+plt.ylabel('Recon x/mm')
+plt.yticks(np.arange(-0.65,0.65,0.05)*1000)
+plt.xticks(np.arange(0,0.65,0.05)*1000, np.arange(0, 650, 50, dtype=int))
+plt.title('Box plot of truth vs recon radius (x axis)')
+plt.savefig('Box_xx_x.pdf')
+plt.show()
+
+data = []
+err = []
+data1 = []
+err1 = []
+data2 = []
+err2 = []
+
+test = []
+
+xx = []
+yy = []
+zz = []
+xx1 = []
+yy1 = []
+zz1 = []
+
+e1 = []
+e2 = []
+e3 = []
+
+ee1 = []
+ee2 = []
+ee3 = []
+
+radius = np.arange(0, 0.60, 0.01)
+for i in radius:
+    h = tables.open_file('/mnt/stage/douwei/Simulation/1t_root/point_axis/1t_+%.3f_xQ.h5' % i)
+    A = h.root.PETruthData[:]['Q']
+    E = np.sum(np.reshape(A,(-1,30)), axis=1)
+    data.append(np.mean(E/nml))
+    err.append(np.std(E/nml))
+    h.close()
+    recon = loadE('/mnt/stage/douwei/Simulation/1t_root/point_axis_10_h5_charge/1t_+%.3f_x_Recon.h5' % i)*1000
+    r = np.linalg.norm(recon[:,:3], axis=1)/1000
+   
+    data1.append(np.mean(r[r<0.6]))
+    err1.append(np.std(r[r<0.6]))
+    data2.append(np.mean(r))
+    err2.append(np.std(r))
+    test.append(r)
+
+    xx.append(np.mean(recon[r<0.6,0]/1000 - i))
+    yy.append(np.mean(recon[r<0.6,1]/1000))
+    zz.append(np.mean(recon[r<0.6,2]/1000))
+    e1.append(np.std(recon[r<0.6,0]/1000 - i))
+    e2.append(np.std(recon[r<0.6,1]/1000))
+    e3.append(np.std(recon[r<0.6,2]/1000))    
+
+    xx1.append(np.mean(recon[:,0]/1000 - i))
+    yy1.append(np.mean(recon[:,1]/1000))
+    zz1.append(np.mean(recon[:,2]/1000))
+    ee1.append(np.std(recon[:,0]/1000 - i))
+    ee2.append(np.std(recon[:,1]/1000))
+    ee3.append(np.std(recon[:,2]/1000))
+    
+plt.figure(dpi=300)
+#plt.plot(radius, np.array(data)-radius,'.', label='Scaled total PE', alpha=0.5)
+plt.plot(radius, np.array(data1)-radius,'.', label='SH recon (cut: r<0.6m)', alpha=0.5)
+plt.plot(radius, np.array(data2)-radius,'.', label='SH recon (without cut)', alpha=0.5)
+plt.xlabel('Radius/mm')
+plt.ylabel('Recon radius bias/m')
+plt.title('Recon radius bias (x axis)')
+plt.legend()
+plt.savefig('Recon_r_bias_x1.pdf')
+plt.show()
+
+
+plt.figure(dpi=300)
+#plt.plot(radius, np.array(data)-radius,'.', label='Scaled total PE', alpha=0.5)
+plt.plot(radius, np.array(err1),'.', label='SH recon (cut: r<0.6m)', alpha=0.5)
+plt.plot(radius, np.array(err2),'.', label='SH recon (without cut)', alpha=0.5)
+plt.xlabel('Radius/mm')
+plt.ylabel('Recon radius resolution/m')
+plt.legend()
+plt.title('Recon radius resolution (x axis)')
+plt.savefig('Recon_r_resolution_x1.pdf')
+plt.show()
+
+plt.figure(dpi=300)
+plt.plot(radius, xx, '.', alpha=0.5, label='x')
+plt.plot(radius, yy, '.', alpha=0.5, label='y')
+plt.plot(radius, zz, '.', alpha=0.5, label='z')
+plt.xlabel('Truth radius/mm')
+plt.ylabel('Recon vertex bias/m')
+plt.legend()
+plt.title('Recon vertex bias (cut: r<0.6 m) (x axis)')
+plt.savefig('Recon_vertex_bias_cut_x1.pdf')
+plt.show()
+
+plt.figure(dpi=300)
+plt.plot(radius, xx1, '.', alpha=0.5, label='x')
+plt.plot(radius, yy1, '.', alpha=0.5, label='y')
+plt.plot(radius, zz1, '.', alpha=0.5, label='z')
+plt.xlabel('Truth radius/mm')
+plt.ylabel('Recon vertex bias/m')
+plt.legend()
+plt.title('Recon vertex bias (without cut) (x axis)')
+plt.savefig('Recon_vertex_bias_x1.pdf')
+plt.show()
+
+plt.figure(dpi=300)
+plt.plot(radius, e1, '.', alpha=0.5, label='x')
+plt.plot(radius, e2, '.', alpha=0.5, label='y')
+plt.plot(radius, e3, '.', alpha=0.5, label='z')
+plt.xlabel('Truth radius/mm')
+plt.ylabel('Recon vertex resolution/m')
+plt.legend()
+plt.title('Recon vertex resolution (cut: r<0.6 m) (x axis)')
+plt.savefig('Recon_vertex_resolution_cut_x1.pdf')
+plt.show()
+
+plt.figure(dpi=300)
+plt.plot(radius, ee1, '.', alpha=0.5, label='x')
+plt.plot(radius, ee2, '.', alpha=0.5, label='y')
+plt.plot(radius, ee3, '.', alpha=0.5, label='z')
+plt.xlabel('Truth radius/mm')
+plt.ylabel('Recon vertex resolution/m')
+plt.legend()
+plt.title('Recon vertex resolution (without cut) (x axis)')
+plt.savefig('Recon_vertex_resolution_x1.pdf')
+plt.show()
+
+
+# In[278]:
+
+
+import tables
+def loadE(file):
+    h = tables.open_file(file)
+    recondata = h.root.Recon
+    E1 = recondata[:]['E_sph_in']
+    x1 = recondata[:]['x_sph_in']
+    y1 = recondata[:]['y_sph_in']
+    z1 = recondata[:]['z_sph_in']
+    L1 = recondata[:]['Likelihood_in']
+    s1 = recondata[:]['success_in']
+
+    E2 = recondata[:]['E_sph_out']
+    x2 = recondata[:]['x_sph_out']
+    y2 = recondata[:]['y_sph_out']
+    z2 = recondata[:]['z_sph_out']
+    L2 = recondata[:]['Likelihood_out']
+    s2 = recondata[:]['success_out']
+
+    data = np.zeros((np.size(x1),4))
+
+    index = L1 < L2
+    data[index,0] = x1[index]
+    data[index,1] = y1[index]
+    data[index,2] = z1[index]
+    data[index,3] = E1[index]
+    data[~index,0] = x2[~index]
+    data[~index,1] = y2[~index]
+    data[~index,2] = z2[~index]
+    data[~index,3] = E2[~index]
+    h.close()
+    return data[(s1*s2)!=0]
+
+plt.figure(dpi=300)
+radius = np.arange(0, 0.60, 0.01)
+h = tables.open_file('/mnt/stage/douwei/Simulation/1t_root/point_axis/1t_+0.000_xQ.h5')
+A0 = h.root.PETruthData[:]['Q']
+E0 = np.sum(np.reshape(A0,(-1,30)), axis=1)
+nml = np.mean(E0)/2
+h.close()
+data = []
+err = []
+data1 = []
+err1 = []
+data2 = []
+err2 = []
+for i in radius:
+    h = tables.open_file('/mnt/stage/douwei/Simulation/1t_root/point_axis/1t_+%.3f_xQ.h5' % i)
+    A = h.root.PETruthData[:]['Q']
+    E = np.sum(np.reshape(A,(-1,30)), axis=1)
+    data.append(np.mean(E/nml))
+    err.append(np.std(E/nml))
+    h.close()
+    recon = loadE('../result_1t_point_axis_Recon_1t_new2/1t_+%.3f_x.h5' % i)
+    recon1 = loadE('/mnt/stage/douwei/Simulation/1t_root/point_axis_10_h5_charge/1t_+%.3f_x_Recon.h5' % i)   
+    r = np.linalg.norm(recon[:,:3], axis=1)
+    if(i==0):
+        nml1 = np.mean(recon[r<0.6,3])/2
+        data1.append(np.mean(recon[r<0.6,3]/nml1))
+        err1.append(np.std(recon[r<0.6,3]/nml1))
+        data2.append(np.mean(recon1[r<0.6,3]/nml1))
+        err2.append(np.std(recon1[r<0.6,3]/nml1))
+        test.append(recon[:,3]/nml1) 
+    else:
+        data1.append(np.mean(recon[r<0.6,3]/nml1))
+        err1.append(np.std(recon[r<0.6,3]/nml1))
+        data2.append(np.mean(recon1[r<0.6,3]/nml1))
+        err2.append(np.std(recon1[r<0.6,3]/nml1))
+        test.append(recon[:,3]/nml1)
+    
+#plt.plot(radius, data, '.', linewidth=1.5, label = 'Sum of hits', alpha = 0.5)
+#plt.plot(radius, data1,'.', label = 'SH recon with cut r<0.6 m', alpha = 0.5)
+#plt.plot(radius, data2,'.', label = 'SH recon without cut', alpha = 0.5)
+
+#plt.errorbar(radius, data, err, marker='s', label = 'Scaled total PE', alpha = 0.5, ms=2, mew=4)
+plt.errorbar(radius, data1, err1, marker='s', label = 'SH recon with cut r<0.6 m', alpha = 0.3, ms=2, mew=4)
+plt.errorbar(radius, data2, err2, marker='s', label = 'SH recon with cut r<0.6 m', alpha = 0.3, ms=2, mew=4)
+#plt.errorbar(radius, data2, err2, marker='s', label = 'SH recon without cut', alpha = 0.5, ms=2, mew=4)
+
+plt.xlabel('Radius/m')
+plt.ylabel('Energy/MeV')
+#plt.yticks(radius*1000)
+plt.legend()
+plt.title('Recon Energy of Smulation data, x axis, Truth: 2 MeV')
+plt.savefig('Energy_x.pdf')
+
+
+# In[284]:
+
+
+import tables
+def loadE(file):
+    h = tables.open_file(file)
+    recondata = h.root.Recon
+    E1 = recondata[:]['E_sph_in']
+    x1 = recondata[:]['x_sph_in']
+    y1 = recondata[:]['y_sph_in']
+    z1 = recondata[:]['z_sph_in']
+    L1 = recondata[:]['Likelihood_in']
+    s1 = recondata[:]['success_in']
+
+    E2 = recondata[:]['E_sph_out']
+    x2 = recondata[:]['x_sph_out']
+    y2 = recondata[:]['y_sph_out']
+    z2 = recondata[:]['z_sph_out']
+    L2 = recondata[:]['Likelihood_out']
+    s2 = recondata[:]['success_out']
+
+    data = np.zeros((np.size(x1),4))
+
+    index = L1 < L2
+    data[index,0] = x1[index]
+    data[index,1] = y1[index]
+    data[index,2] = z1[index]
+    data[index,3] = E1[index]
+    data[~index,0] = x2[~index]
+    data[~index,1] = y2[~index]
+    data[~index,2] = z2[~index]
+    data[~index,3] = E2[~index]
+    h.close()
+    return data[(s1*s2)!=0]
+
+plt.figure(dpi=300)
+radius = np.arange(0, 0.60, 0.01)
+h = tables.open_file('/mnt/stage/douwei/Simulation/1t_root/point_axis/1t_+0.000_xQ.h5')
+A0 = h.root.PETruthData[:]['Q']
+E0 = np.sum(np.reshape(A0,(-1,30)), axis=1)
+nml = np.mean(E0)/2
+h.close()
+data = []
+err = []
+data1 = []
+err1 = []
+data2 = []
+err2 = []
+for i in radius:
+    h = tables.open_file('/mnt/stage/douwei/Simulation/1t_root/point_axis/1t_+%.3f_zQ.h5' % i)
+    A = h.root.PETruthData[:]['Q']
+    E = np.sum(np.reshape(A,(-1,30)), axis=1)
+    data.append(np.mean(E/nml))
+    err.append(np.std(E/nml))
+    h.close()
+    recon = loadE('../result_1t_point_axis_Recon_1t_new2/1t_+%.3f_z.h5' % i)
+    recon1 = loadE('/mnt/stage/douwei/Simulation/1t_root/point_axis_10_h5_charge/1t_+%.3f_z_Recon.h5' % i)   
+    r = np.linalg.norm(recon[:,:3], axis=1)
+    r1 = np.linalg.norm(recon1[:,:3], axis=1)
+    if(i==0):
+        nml1 = np.mean(recon[r<0.6,3])/2
+        data1.append(np.mean(recon[r<0.6,3]/nml1))
+        err1.append(np.std(recon[r<0.6,3]/nml1))
+        data2.append(np.mean(recon1[r1<0.6,3]/nml1))
+        err2.append(np.std(recon1[r1<0.6,3]/nml1))
+        test.append(recon[:,3]/nml1) 
+    else:
+        data1.append(np.mean(recon[r<0.6,3]/nml1))
+        err1.append(np.std(recon[r<0.6,3]/nml1))
+        data2.append(np.mean(recon1[r1<0.6,3]/nml1))
+        err2.append(np.std(recon1[r1<0.6,3]/nml1))
+        test.append(recon[:,3]/nml1)
+    
+#plt.plot(radius, data, '.', linewidth=1.5, label = 'Sum of hits', alpha = 0.5)
+#plt.plot(radius, data1,'.', label = 'SH recon with cut r<0.6 m', alpha = 0.5)
+#plt.plot(radius, data2,'.', label = 'SH recon without cut', alpha = 0.5)
+
+##plt.errorbar(radius, data, err, marker='s', label = 'Scaled total PE', alpha = 0.5, ms=2, mew=4)
+
+plt.errorbar(radius, data1, err1, marker='s', label = 'MC Truth', alpha = 0.3, ms=2, mew=4)
+plt.errorbar(radius, data2, err2, marker='s', label = 'Waveform Analysis', alpha = 0.3, ms=2, mew=4)
+#plt.errorbar(radius, data2, err2, marker='s', label = 'SH recon without cut', alpha = 0.5, ms=2, mew=4)
+
+plt.xlabel('Radius/m')
+plt.ylabel('Energy/MeV')
+#plt.yticks(radius*1000)
+plt.legend()
+plt.title('Recon Energy of Smulation data, z axis, Truth: 2 MeV')
+plt.savefig('Energy_x.pdf')
+
+
+# In[298]:
+
+
+# example of read 1 file
+def main(path,axis):
+    
+    x_recon = np.empty(0)
+    y_recon = np.empty(0)
+    z_recon = np.empty(0)
+    x_truth = np.empty(0)
+    y_truth = np.empty(0)
+    z_truth = np.empty(0)
+    
+    for i,file in enumerate(np.arange(0,0.65,0.01)):
+        try:
+            h = tables.open_file('../%s/1t_%+.3f_%s.h5' % (path, file, axis),'r')
+            recondata = h.root.Recon
+            E1 = recondata[:]['E_sph_in']
+            x1 = recondata[:]['x_sph_in']
+            y1 = recondata[:]['y_sph_in']
+            z1 = recondata[:]['z_sph_in']
+            L1 = recondata[:]['Likelihood_in']
+            s1 = recondata[:]['success_in']
+
+            E2 = recondata[:]['E_sph_out']
+            x2 = recondata[:]['x_sph_out']
+            y2 = recondata[:]['y_sph_out']
+            z2 = recondata[:]['z_sph_out']
+            L2 = recondata[:]['Likelihood_out']
+            s2 = recondata[:]['success_out']
+
+            data = np.zeros((np.size(x1),3))
+
+            index = L1 < L2
+            data[index,0] = x1[index]
+            data[index,1] = y1[index]
+            data[index,2] = z1[index]
+
+            data[~index,0] = x2[~index]
+            data[~index,1] = y2[~index]
+            data[~index,2] = z2[~index]
+
+            xt = 0
+            yt = 0
+            zt = 0
+            if(axis=='x'):
+                xt = file
+            elif(axis=='y'):
+                yt = file
+            elif(axis=='z'):
+                zt = file
+            else:
+                print(haha)
+            x = data[(s1 * s2)!=0,0]
+            y = data[(s1 * s2)!=0,1]
+            z = data[(s1 * s2)!=0,2]
+
+            '''
+            r = np.sqrt(x**2 + y**2 + z**2)
+            index = (r<0.64) & (r>0.01) & (~np.isnan(r))
+            H1, xedges, yedges = np.histogram2d(x[index]**2 + y[index]**2, z[index], bins=50)
+            X, Y = np.meshgrid(xedges[1:],yedges[1:])
+            plt.figure(dpi=200)
+            plt.contourf(X,Y,np.log(np.transpose(H1)+1))
+            plt.colorbar()
+            plt.xlabel(r'$x^2 + y^2/m^2$')
+            plt.ylabel('$z$/m')
+            plt.title('axis = %s, radius=%+.2fm' % (axis,file))
+            plt.savefig('./fig/Scatter_1MeV%+.2f_%s.pdf' % (file,axis))
+            plt.show()
+            #index1 = (~index) & (~np.isnan(x2))
+            #plt.hist(np.nan_to_num(np.sqrt(data[index1,0]**2 + data[index1,1]**2 + data[index1,2]**2)),bins=100)
+            #plt.show()
+            plt.figure(dpi=200)
+            index2 = index
+            #index2 = index
+            plt.hist(np.sqrt(x[index2]**2+y[index2]**2+z[index2]**2), bins=np.arange(0,0.65,0.01),label='recon')
+            plt.axvline(np.abs(file), color='red', label='real')
+            #plt.axvline(0.88 * 0.65,color='green',linewidth=1,label='bound')
+            plt.xlabel('Recon radius/m')
+            plt.ylabel('Num')
+            plt.legend()
+            recon = eval(axis)
+            plt.title('axis = %s, Radius=%+.2fm, std = %.4fm' % (axis, file, np.std(recon[index2]-np.abs(file) * np.sqrt(26)/5)))
+            plt.savefig('./fig/HistR_1MeV%+.2f_%s.pdf' % (file,axis))
+            #plt.show()
+            '''
+            x_recon = np.hstack((x_recon, x))
+            y_recon = np.hstack((y_recon, y))
+            z_recon = np.hstack((z_recon, z))
+            x_truth = np.hstack((x_truth, xt*np.ones_like(x)))
+            y_truth = np.hstack((y_truth, yt*np.ones_like(y)))
+            z_truth = np.hstack((z_truth, zt*np.ones_like(z)))
+        except:
+            pass
+    r_recon = np.sqrt(x_recon**2 + y_recon**2 + z_recon**2)
+    r_truth = np.sqrt(x_truth**2 + y_truth**2 + z_truth**2)
+    plt.figure(dpi=300, figsize=(20,10))
+    from matplotlib import cm
+    from matplotlib.colors import ListedColormap, LinearSegmentedColormap
+    viridis = cm.get_cmap('jet', 256)
+    newcolors = viridis(np.linspace(0, 1, 65536))
+    pink = np.array([1, 1, 1, 1])
+    newcolors[:25, :] = pink
+    newcmp = ListedColormap(newcolors)
+    
+    H, xedges, yedges = np.histogram2d(r_truth, r_recon, bins=(np.arange(0,0.65,0.01), np.arange(0,0.65,0.01)))
+    plt.figure(dpi=300)
+    #plt.contourf(xedges[1:], yedges[1:], np.nan_to_num(H), cmap=newcmp)
+    index = z_recon!=0
+    plt.hist2d(z_truth[index], z_recon[index], bins=(np.arange(0,0.65,0.01), np.arange(0,0.65,0.01)), cmap=newcmp)
+    plt.colorbar()
+    plt.xlabel('Truth $z$/m')
+    plt.ylabel('Recon $z$/m')
+
+    return x_recon, y_recon, z_recon, x_truth, y_truth, z_truth
+#main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','x')
+#main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','y')
+#main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','z')
+
+x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_point_axis_Recon_1t_new','z')
+#x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_point_axis_Recon_1t_charge_template','z')
+plt.savefig('zvsz.png')
+
+
+# In[305]:
+
+
+# example of read 1 file
+def main(path,axis):
+    
+    x_recon = np.empty(0)
+    y_recon = np.empty(0)
+    z_recon = np.empty(0)
+    x_truth = np.empty(0)
+    y_truth = np.empty(0)
+    z_truth = np.empty(0)
+    
+    for i,file in enumerate(np.arange(0,0.65,0.01)):
+        try:
+            h = tables.open_file('../%s/1t_%+.3f_%s.h5' % (path, file, axis),'r')
+            recondata = h.root.Recon
+            E1 = recondata[:]['E_sph_in']
+            x1 = recondata[:]['x_sph_in']
+            y1 = recondata[:]['y_sph_in']
+            z1 = recondata[:]['z_sph_in']
+            L1 = recondata[:]['Likelihood_in']
+            s1 = recondata[:]['success_in']
+
+            E2 = recondata[:]['E_sph_out']
+            x2 = recondata[:]['x_sph_out']
+            y2 = recondata[:]['y_sph_out']
+            z2 = recondata[:]['z_sph_out']
+            L2 = recondata[:]['Likelihood_out']
+            s2 = recondata[:]['success_out']
+
+            data = np.zeros((np.size(x1),3))
+
+            index = L1 < L2
+            data[index,0] = x1[index]
+            data[index,1] = y1[index]
+            data[index,2] = z1[index]
+
+            data[~index,0] = x2[~index]
+            data[~index,1] = y2[~index]
+            data[~index,2] = z2[~index]
+
+            xt = 0
+            yt = 0
+            zt = 0
+            if(axis=='x'):
+                xt = file
+            elif(axis=='y'):
+                yt = file
+            elif(axis=='z'):
+                zt = file
+            else:
+                print(haha)
+                
+            x = data[(s1 * s2)!=0,0]
+            y = data[(s1 * s2)!=0,1]
+            z = data[(s1 * s2)!=0,2]
+
+            '''
+            r = np.sqrt(x**2 + y**2 + z**2)
+            index = (r<0.64) & (r>0.01) & (~np.isnan(r))
+            H1, xedges, yedges = np.histogram2d(x[index]**2 + y[index]**2, z[index], bins=50)
+            X, Y = np.meshgrid(xedges[1:],yedges[1:])
+            plt.figure(dpi=200)
+            plt.contourf(X,Y,np.log(np.transpose(H1)+1))
+            plt.colorbar()
+            plt.xlabel(r'$x^2 + y^2/m^2$')
+            plt.ylabel('$z$/m')
+            plt.title('axis = %s, radius=%+.2fm' % (axis,file))
+            plt.savefig('./fig/Scatter_1MeV%+.2f_%s.pdf' % (file,axis))
+            plt.show()
+            #index1 = (~index) & (~np.isnan(x2))
+            #plt.hist(np.nan_to_num(np.sqrt(data[index1,0]**2 + data[index1,1]**2 + data[index1,2]**2)),bins=100)
+            #plt.show()
+            plt.figure(dpi=200)
+            index2 = index
+            #index2 = index
+            plt.hist(np.sqrt(x[index2]**2+y[index2]**2+z[index2]**2), bins=np.arange(0,0.65,0.01),label='recon')
+            plt.axvline(np.abs(file), color='red', label='real')
+            #plt.axvline(0.88 * 0.65,color='green',linewidth=1,label='bound')
+            plt.xlabel('Recon radius/m')
+            plt.ylabel('Num')
+            plt.legend()
+            recon = eval(axis)
+            plt.title('axis = %s, Radius=%+.2fm, std = %.4fm' % (axis, file, np.std(recon[index2]-np.abs(file) * np.sqrt(26)/5)))
+            plt.savefig('./fig/HistR_1MeV%+.2f_%s.pdf' % (file,axis))
+            #plt.show()
+            '''
+            x_recon = np.hstack((x_recon, x))
+            y_recon = np.hstack((y_recon, y))
+            z_recon = np.hstack((z_recon, z))
+            x_truth = np.hstack((x_truth, xt*np.ones_like(x)))
+            y_truth = np.hstack((y_truth, yt*np.ones_like(y)))
+            z_truth = np.hstack((z_truth, zt*np.ones_like(z)))
+        except:
+            pass
+    r_recon = np.sqrt(x_recon**2 + y_recon**2 + z_recon**2)
+    r_truth = np.sqrt(x_truth**2 + y_truth**2 + z_truth**2)
+    plt.figure(dpi=300, figsize=(20,10))
+    from matplotlib import cm
+    from matplotlib.colors import ListedColormap, LinearSegmentedColormap
+    viridis = cm.get_cmap('jet', 256)
+    newcolors = viridis(np.linspace(0, 1, 65536))
+    pink = np.array([1, 1, 1, 1])
+    newcolors[:25, :] = pink
+    newcmp = ListedColormap(newcolors)
+    
+    H, xedges, yedges = np.histogram2d(r_truth, r_recon, bins=(np.arange(0,0.65,0.01), np.arange(0,0.65,0.01)))
+    plt.figure(dpi=300)
+    #plt.contourf(xedges[1:], yedges[1:], np.nan_to_num(H), cmap=newcmp)
+    index = z_recon!=0
+    plt.hist2d(x_truth[index], x_recon[index], bins=(np.arange(0,0.65,0.01), np.arange(0,0.65,0.01)), cmap=newcmp)
+    plt.colorbar()
+    plt.xlabel('Truth $x$/m')
+    plt.ylabel('Recon $x$/m')
+
+    return x_recon, y_recon, z_recon, x_truth, y_truth, z_truth
+#main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','x')
+#main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','y')
+#main('result_1t_2.0MeV_dns_Recon_1t_shell_cubic','z')
+
+x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_point_axis_Recon_1t_new2','x')
+#x_recon, y_recon, z_recon, x_truth, y_truth, z_truth = main('result_1t_point_axis_Recon_1t_charge_template','z')
+plt.savefig('xvsx.png')
+
+
 # In[ ]:
 
 
-
+r
 
