@@ -10,7 +10,7 @@ import numpy as np
 import h5py
 
 
-# In[82]:
+# In[11]:
 
 
 def LoadDataPE_TW(path, radius, order):
@@ -42,35 +42,95 @@ def main_photon(path, order):
 
 order = 10
 rd1, coeff_pe1, error_pe1 = main_photon('coeff_pe_1t_8.0MeV_shell/',order)
-rd2, coeff_pe2, error_pe2 = main_photon('coeff_pe_1t_reflection0.00_30/',order)
+rd2, coeff_pe2, error_pe2 = main_photon('coeff_pe_1t_reflection0.05_30/',order)
 rd3, coeff_pe3, error_pe3 = main_photon('coeff_pe_1t_reflection0.05_8MeV_30/',order)
 for i in np.arange(order-1):
     if(i==0):
         plt.figure(num=i+1, dpi=300)
-        plt.plot(rd1, coeff_pe1[i] - np.log(4) - np.log(20000/4285),'-o',linewidth=0.5, markersize=2, label='polished')
-        plt.plot(rd2, coeff_pe2[i] - np.log(20000/4285),'-o',linewidth=0.5, markersize=2, label='absorbed')
-        plt.plot(rd3, coeff_pe3[i] - np.log(4) - np.log(20000/4285),'-o',linewidth=0.5, markersize=2, label='ground')
+        plt.plot(np.array(rd1)/0.65, coeff_pe1[i] - np.log(4) - np.log(20000/4285),'-o',linewidth=0.5, markersize=2, label='polished')
+        plt.plot(np.array(rd2)/0.65, coeff_pe2[i] - np.log(20000/4285),'-o',linewidth=0.5, markersize=2, label='absorbed')
+        plt.plot(np.array(rd3)/0.65, coeff_pe3[i] - np.log(4) - np.log(20000/4285),'-o',linewidth=0.5, markersize=2, label='ground')
         #plt.errorbar(rd1, coeff_pe1[i] - np.log(4) - np.log(20000/4285),yerr=error_pe1[i],linewidth=0.5, markersize=2, label='polished')
         #plt.errorbar(rd2, coeff_pe2[i] - np.log(20000/4285),yerr=error_pe2[i],linewidth=0.5, markersize=2, label='absorbed')
         #plt.errorbar(rd3, coeff_pe3[i],yerr=error_pe3[i],linewidth=0.5, markersize=2, label='ground')
     else:
         plt.figure(num=i+1, dpi=300)
-        plt.plot(rd1, coeff_pe1[i],'-o',linewidth=0.5, markersize=2, label='polished')
-        plt.plot(rd2, coeff_pe2[i],'-o',linewidth=0.5, markersize=2, label='absorbed')
-        plt.plot(rd3, coeff_pe3[i],'-o',linewidth=0.5, markersize=2, label='ground')
+        plt.plot(np.array(rd1)/0.65, coeff_pe1[i],'-o',linewidth=0.5, markersize=2, label='polished')
+        plt.plot(np.array(rd2)/0.65, coeff_pe2[i],'-o',linewidth=0.5, markersize=2, label='absorbed')
+        plt.plot(np.array(rd3)/0.65, coeff_pe3[i],'-o',linewidth=0.5, markersize=2, label='ground')
         #plt.errorbar(rd1, coeff_pe1[i],yerr=error_pe1[i],linewidth=0.5, markersize=2, label='polished')
         #plt.errorbar(rd2, coeff_pe2[i],yerr=error_pe2[i],linewidth=0.5, markersize=2, label='absorbed')
         #plt.errorbar(rd3, coeff_pe3[i],yerr=error_pe3[i],linewidth=0.5, markersize=2, label='ground')
 
     plt.legend()
-    plt.xlabel('Radius/m')
+    plt.xlabel('Relative R')
     plt.ylabel('PE Legendre Coefficient')
-    plt.title('%d-th coefficient' % i)
+    plt.title('%d-th order' % i)
     plt.savefig('Coeff%d.png' % i)
     plt.show()
 
 
-# In[8]:
+# In[14]:
+
+
+def LoadDataPE_TW(path, radius, order):
+    data = []
+    error = []
+    filename = path + 'file_' + radius + '.h5'
+    h = tables.open_file(filename,'r')
+    coeff = 'coeff' + str(order)
+    std = 'std' + str(order)
+    data = eval('np.array(h.root.'+ coeff + '[:])')
+    error = eval('np.array(h.root.'+ std + '[:])')
+    h.close()
+    return data, error
+
+def main_photon(path, order):
+    ra = np.arange(0.01, 0.65, 0.01)
+    rd = []
+    coeff_pe = []
+    error_pe = []
+    for radius in ra:
+        str_radius = '%+.3f' % radius
+        coeff, error= LoadDataPE_TW(path, str_radius, order)
+        rd.append(np.array(radius))
+        coeff_pe = np.hstack((coeff_pe, coeff))
+        error_pe = np.hstack((error_pe, error))
+    coeff_pe = np.reshape(coeff_pe,(-1,np.size(rd)),order='F')
+    error_pe = np.reshape(error_pe,(-1,np.size(rd)),order='F')
+    return rd, coeff_pe, error
+
+order = 10
+rd1, coeff_pe1, error_pe1 = main_photon('coeff_pe_1t_8.0MeV_shell/',order)
+rd2, coeff_pe2, error_pe2 = main_photon('coeff_pe_1t_reflection0.05_30/',order)
+rd3, coeff_pe3, error_pe3 = main_photon('coeff_pe_1t_reflection0.05_30_oil/',order)
+for i in np.arange(order-1):
+    if(i==0):
+        plt.figure(num=i+1, dpi=300)
+        plt.plot(np.array(rd1)/0.65, coeff_pe1[i] - np.log(4) - np.log(20000/4285),'-o',linewidth=0.5, markersize=2, label='polished')
+        plt.plot(np.array(rd2)/0.65, coeff_pe2[i] - np.log(20000/4285),'-o',linewidth=0.5, markersize=2, label='absorbed')
+        plt.plot(np.array(rd3)/0.65, coeff_pe3[i],'-o',linewidth=0.5, markersize=2, label='ground')
+        #plt.errorbar(rd1, coeff_pe1[i] - np.log(4) - np.log(20000/4285),yerr=error_pe1[i],linewidth=0.5, markersize=2, label='polished')
+        #plt.errorbar(rd2, coeff_pe2[i] - np.log(20000/4285),yerr=error_pe2[i],linewidth=0.5, markersize=2, label='absorbed')
+        #plt.errorbar(rd3, coeff_pe3[i],yerr=error_pe3[i],linewidth=0.5, markersize=2, label='ground')
+    else:
+        plt.figure(num=i+1, dpi=300)
+        plt.plot(np.array(rd1)/0.65, coeff_pe1[i],'-o',linewidth=0.5, markersize=2, label='Teflon polished reflection, water')
+        plt.plot(np.array(rd2)/0.65, coeff_pe2[i],'-o',linewidth=0.5, markersize=2, label='Teflon ground reflection, water')
+        plt.plot(np.array(rd3)/0.65, coeff_pe3[i],'-o',linewidth=0.5, markersize=2, label='Teflon ground reflection, oil')
+        #plt.errorbar(rd1, coeff_pe1[i],yerr=error_pe1[i],linewidth=0.5, markersize=2, label='polished')
+        #plt.errorbar(rd2, coeff_pe2[i],yerr=error_pe2[i],linewidth=0.5, markersize=2, label='absorbed')
+        #plt.errorbar(rd3, coeff_pe3[i],yerr=error_pe3[i],linewidth=0.5, markersize=2, label='ground')
+
+    plt.legend()
+    plt.xlabel('Relative R')
+    plt.ylabel('PE Legendre Coefficient')
+    plt.title('%d-th order' % i)
+    plt.savefig('Coeff%d.png' % i)
+    plt.show()
+
+
+# In[5]:
 
 
 import tables
@@ -419,6 +479,12 @@ for i in np.arange(order-1):
     plt.title('%d-th coefficient' % i)
     plt.savefig('Coeff%d.png' % i)
     plt.show()
+
+
+# In[1]:
+
+
+from zernike import RZern
 
 
 # In[ ]:
