@@ -91,6 +91,13 @@ def ReadFile(filename):
     print(filename, flush=True)
     truthtable = h1.root.GroundTruth
     EventID = truthtable[:]['EventID']
+    ChannelID = truthtable[:]['ChannelID']
+    
+    PETime = truthtable[:]['PETime']
+    photonTime = truthtable[:]['photonTime']
+    PulseTime = truthtable[:]['PulseTime']
+    dETime = truthtable[:]['dETime']
+    
     Q = h1.root.PETruthData[:]['Q']
 
     x = h1.root.TruthData[:]['x']
@@ -101,7 +108,7 @@ def ReadFile(filename):
         print('Event do not match!')
         exit()
     
-    return (EventID, Q, x, y, z)
+    return (EventID, ChannelID, Q, PETime, photonTime, PulseTime, dETime, x, y, z)
 
 def ReadChain(path, axis):
     '''
@@ -133,7 +140,7 @@ def ReadChain(path, axis):
         z = np.hstack((z, z1))
     return EventID, Q, x, y, z
 
-def Calib(theta, *args):
+def CalibPE(theta, *args):
     '''
     # core of this program
     # input: theta: parameter to optimize
@@ -162,12 +169,32 @@ def Calib(theta, *args):
     L = L0/(2*np.size(y)) + alpha * rho * np.linalg.norm(theta,1) + 1/2* alpha * (1-rho) * np.linalg.norm(theta,2) # elastic net
     return L
 
+def CalibTime(theta, *args):
+    EventID, y, X, qt, ts = args
+    T_i = np.dot(X, theta)
+    # quantile regression
+    # quantile = 0.01
+    L0 = Quantile(y, T_i, qt, ts, EventID)
+    L = L0 + np.sum(np.abs(theta))
+    return L0
 
-def MyHessian(x, *args):
+def Quantile(y, T_i, qt, ts, EventID):
+    #less = T_i[y<T_i] - y[y<T_i]
+    #more = y[y>=T_i] - T_i[y>=T_i]
+    #R = (1-tau)*np.sum(less) + tau*np.sum(more)
+    R = (1-qt)*(T_i-y)*(y<T_i) + (qt)*(y-T_i)*(y>=T_i)
+    H,edges = np.histogram(EventID, weights = R, bins = np.hstack((np.unique(EventID), np.max(EventID)+1)))
+    Q = np.bincount(EventID)
+    #L0 = 0
+    L = Q[1:]*np.log(qt*(1-qt)/ts) - H/ts
+    L0 = np.nansum(L)
+    return -L0
+
+def MyHessian(x, fun, *args):
     # hession matrix calulation written by dw, for later uncertainty analysis
     # it not be examed
     # what if it is useful one day
-    total_pe, PMT_pos, LegendreCoeff= args
+    total_pe, PMT_pos, LegendreCoeff = args
     H = np.zeros((len(x),len(x)))
     h = 1e-6
     k = 1e-6
@@ -181,16 +208,17 @@ def MyHessian(x, *args):
                 delta2[i] = -h
                 delta2[j] = k
 
-                L1 = - Calib(x + delta1, *(total_pe, PMT_pos, LegendreCoeff))
-                L2 = - Calib(x - delta1, *(total_pe, PMT_pos, LegendreCoeff))
-                L3 = - Calib(x + delta2, *(total_pe, PMT_pos, LegendreCoeff))
-                L4 = - Calib(x - delta2, *(total_pe, PMT_pos, LegendreCoeff))
+                L1 = - fun(x + delta1, *args)
+                L2 = - fun(x - delta1, *args)
+                L3 = - fun(x + delta2, *args)
+                L4 = - fun(x - delta2, *args)
                 H[i,j] = (L1+L2-L3-L4)/(4*h*k)
             else:
                 delta = np.zeros(len(x))
                 delta[i] = h
-                L1 = - Calib(x + delta, *(total_pe, PMT_pos, LegendreCoeff))
-                L2 = - Calib(x - delta, *(total_pe, PMT_pos, LegendreCoeff))
-                L3 = - Calib(x, *(total_pe, PMT_pos, LegendreCoeff))
+                L1 = - fun(x + delta, *args)
+                L2 = - fun(x - delta, *args)
+                L3 = - fun(x, *args)
                 H[i,j] = (L1+L2-2*L3)/h**2                
     return H
+
