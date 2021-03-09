@@ -185,6 +185,15 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
             ts = 2.6
             result = minimize(pub.CalibTime, x0=x0, method='SLSQP', args = (np.hstack((EventID, EventID)), y, X, qt, ts))
         elif mode == 'combined':
+            basis = np.zeros((X.shape[0], X.shape[1]*Y.shape[1]))
+            for i_index, i in enumerate(np.arange(X.shape[1])):
+                for j_index, j in enumerate(np.arange(Y.shape[1])):
+                    total_index = i_index*Y.shape[1] + j_index
+                    if not total_index % 10:
+                        print(total_index)
+                    basis[:, total_index] = X[:,i_index]*Y[:,j_index]
+            X = basis
+            x0 = np.zeros_like(X[0])
             x0[0] = 0.8 + np.log(2) # intercept is much more important
             result = minimize(pub.CalibPE, x0=x0, method='SLSQP', args = (y, PMTPos, X))
 
