@@ -54,16 +54,17 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
         from zernike import RZern
         cos_theta = pub.LegendreCoeff(PMTPosRep, vertex, order, Legendre=False)
         cart = RZern(order)
-        nk = cart.nk            
-        rho = np.linalg.norm(vertex, axis=1)/0.6
-        theta = np.arccos(cos_theta)
-        rho_total = np.hstack((rho, rho))
-        theta_total = np.hstack((theta, np.pi*2 - theta))
-        X = np.zeros((rho_total.shape[0], nk))
+        nk = cart.nk
+        m = cart.mtab
+        n = cart.ntab
+        rho = np.linalg.norm(vertex, axis=1)/0.65
+        theta = np.arccos(cos_theta)        
+        X = np.zeros((rho.shape[0], nk))
         for i in np.arange(nk):
             if not i % 5:
                 print(f'process {i}-th event')
-            X[:,i] = cart.Zk(i, rho_total, theta_total)
+            X[:,i] = cart.Zk(i, rho, theta)
+        X = X[:,m>=0]
         print(f'rank: {np.linalg.matrix_rank(X)}')    
     print(f'use {time.time() - tmp} s')
 
@@ -74,12 +75,11 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
         y = PulseTime 
     elif mode == 'combined':
         PulseTime = PulseTime/np.max(PulseTime)
-        bins = np.arange(0,1,0.01)
+        bins = np.arange(0,1,0.1)
 
         N = 10
         x = pub.legval(bins, np.eye(N).reshape(N, N, 1))
         Y = np.tile(x, len(np.unique(EventID))*len(np.unique(ChannelID))).T
-        Y = np.vstack((Y, Y))
         #basis = np.zeros_like(X)
         
         X = np.repeat(X, bins.shape[0], axis=0)
@@ -95,11 +95,6 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
                 y[k_index, i, 1:], _ = np.histogram(Pulse_t[CID==i], bins=bins)
         y = np.reshape(y,(-1))
 
-    # symmetry
-    if basis == 'Zernike':
-        y = np.hstack((y, y))
-    else:
-        pass
     print(y.shape,X.shape)
 
     if verbose:
@@ -159,7 +154,12 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
                     if not total_index % 10:
                         print(total_index)
                     basis[:, total_index] = X[:,i_index]*Y[:,j_index]
-            # data = pd.DataFrame(data = np.hstack((basis, np.atleast_2d(y).T)))                
+            # data = pd.DataFrame(data = np.hstack((basis, np.atleast_2d(y).T)))  
+            with h5py.File(output,'w') as out:        
+                out.create_dataset('X', data = basis)
+                out.create_dataset('Y', data = y)
+            print(basis.shape, y.shape)
+            breakpoint()
             print('begin...')
             model = sm.GLM(y, basis, family=sm.families.Poisson())
             result = model.fit()
@@ -170,7 +170,6 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
 
             print('Waring! No AIC and std value')
         if verbose:
-            print(f'rank: {np.linalg.matrix_rank(data[cname])}')
             print(res.summary())
 
     elif (alg == 'custom'):
@@ -224,7 +223,7 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
             y = np.atleast_2d(y).T
             data = np.hstack((X, y, np.ones_like(y)))
 
-            h2o.init() 
+            h2o.init()
             hf = h2o.H2OFrame(data)
             predictors = hf.columns[0:-2]
             response_col = hf.columns[-2]
@@ -256,8 +255,7 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
             hf = h2o.H2OFrame(data)
             breakpoint()
             predictors = hf.columns[0:-2]
-            response_col = hf.columns[-2]
-            
+            response_col = hf.columns[-2]           
 
         if verbose:
             print(coef_)
