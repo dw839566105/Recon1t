@@ -184,6 +184,9 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
             qt = 0.1
             ts = 2.6
             result = minimize(pub.CalibTime, x0=x0, method='SLSQP', args = (np.hstack((EventID, EventID)), y, X, qt, ts))
+        elif mode == 'combined':
+            x0[0] = 0.8 + np.log(2) # intercept is much more important
+            result = minimize(pub.CalibPE, x0=x0, method='SLSQP', args = (y, PMTPos, X))
 
         coef_ = np.array(result.x, dtype=float)
         if verbose:
