@@ -28,7 +28,7 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
     if(offset):
         off = pub.LoadBase(offset)
     else:
-        off = np.zeros(np.zeros_like(PMTPos[:,0]))
+        off = np.zeros_like(PMTPos[:,0])
     print('total event: %d' % np.size(np.unique(EventID)), flush=True)
     print('begin processing legendre coeff', flush=True)
     # this part for the same vertex
