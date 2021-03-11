@@ -12,7 +12,7 @@ np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
 # global:
 PMTPos = pub.ReadJPPMT()
 
-def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offset):
+def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offset, pre):
     '''
     # main program
     # input: radius: %+.3f, 'str' (in makefile, str is default)
@@ -21,99 +21,119 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
     #        cut_max: cut off of Legendre
     # output: the gathered result EventID, ChannelID, x, y, z
     '''
-    print('begin reading file', flush=True)
+    if not pre:
+        print('begin reading file', flush=True)
+        EventID, ChannelID, Q, PETime, photonTime, PulseTime, dETime, x, y, z = pub.ReadFile(filename)
+        VertexTruth = (np.vstack((x, y, z))/1e3).T
+        if(offset):
+            off = pub.LoadBase(offset)
+        else:
+            off = np.zeros_like(PMTPos[:,0])
+        print('total event: %d' % np.size(np.unique(EventID)), flush=True)
+        print('begin processing legendre coeff', flush=True)
+        # this part for the same vertex
 
-    EventID, ChannelID, Q, PETime, photonTime, PulseTime, dETime, x, y, z = pub.ReadFile(filename)
-    VertexTruth = (np.vstack((x, y, z))/1e3).T
-    if(offset):
-        off = pub.LoadBase(offset)
-    else:
-        off = np.zeros_like(PMTPos[:,0])
-    print('total event: %d' % np.size(np.unique(EventID)), flush=True)
-    print('begin processing legendre coeff', flush=True)
-    # this part for the same vertex
+        tmp = time.time()
+        EventNo = np.size(np.unique(EventID))
+        PMTNo = np.size(PMTPos[:,0])
+        if mode == 'PE':
+            PMTPosRep = np.tile(PMTPos, (EventNo,1))
+            vertex = np.repeat(VertexTruth, PMTNo, axis=0)
+        elif mode == 'time':
+            counts = np.bincount(EventID)
+            counts = counts[counts!=0]
+            PMTPosRep = PMTPos[ChannelID]
+            vertex = np.repeat(VertexTruth, counts, axis=0)
+        elif mode == 'combined':
+            PMTPosRep = np.tile(PMTPos, (EventNo,1))
+            vertex = np.repeat(VertexTruth, PMTNo, axis=0)
 
-    tmp = time.time()
-    EventNo = np.size(np.unique(EventID))
-    PMTNo = np.size(PMTPos[:,0])
-    if mode == 'PE':
-        PMTPosRep = np.tile(PMTPos, (EventNo,1))
-        vertex = np.repeat(VertexTruth, PMTNo, axis=0)
-    elif mode == 'time':
-        counts = np.bincount(EventID)
-        counts = counts[counts!=0]
-        PMTPosRep = PMTPos[ChannelID]
-        vertex = np.repeat(VertexTruth, counts, axis=0)
-    elif mode == 'combined':
-        PMTPosRep = np.tile(PMTPos, (EventNo,1))
-        vertex = np.repeat(VertexTruth, PMTNo, axis=0)
+        if basis == 'Legendre':
+            X, cos_theta = pub.LegendreCoeff(PMTPosRep, vertex, order, Legendre=True)
+        elif basis == 'Zernike':
+            from zernike import RZern
+            cos_theta = pub.LegendreCoeff(PMTPosRep, vertex, order, Legendre=False)
+            cart = RZern(order)
+            nk = cart.nk
+            m = cart.mtab
+            n = cart.ntab
+            rho = np.linalg.norm(vertex, axis=1)/0.65
+            theta = np.arccos(cos_theta)
+            X = np.zeros((rho.shape[0], nk))
 
-    if basis == 'Legendre':
-        X, cos_theta = pub.LegendreCoeff(PMTPosRep, vertex, order, Legendre=True)
-    elif basis == 'Zernike':
-        from zernike import RZern
-        cos_theta = pub.LegendreCoeff(PMTPosRep, vertex, order, Legendre=False)
-        cart = RZern(order)
-        nk = cart.nk
-        m = cart.mtab
-        n = cart.ntab
-        rho = np.linalg.norm(vertex, axis=1)/0.65
-        theta = np.arccos(cos_theta)        
-        X = np.zeros((rho.shape[0], nk))
-        for i in np.arange(nk):
-            if not i % 5:
-                print(f'process {i}-th event')
-            X[:,i] = cart.Zk(i, rho, theta)
-        X = X[:,m>=0]
-        print(f'rank: {np.linalg.matrix_rank(X)}')    
-    print(f'use {time.time() - tmp} s')
+            for i in np.arange(nk):
+                if not i % 5:
+                    print(f'process {i}-th event')
+                X[:,i] = cart.Zk(i, rho, theta)
+            X = X[:,m>=0]
+            print(f'rank: {np.linalg.matrix_rank(X)}')    
+        print(f'use {time.time() - tmp} s')
 
-    # which info should be used
-    if mode == 'PE':
-        y = Q
-    elif mode == 'time':
-        y = PulseTime 
-    elif mode == 'combined':
-        PulseTime = PulseTime/np.max(PulseTime)
-        bins = np.arange(0,1,0.1)
+        # which info should be used
+        if mode == 'PE':
+            y = Q
+        elif mode == 'time':
+            y = PulseTime 
+        elif mode == 'combined':
+            # PulseTime = PulseTime - np.min(PulseTime)
+            # PulseTime = (PulseTime - np.max(PulseTime)/2)/np.max(PulseTime)*2
+            # print(np.min(PulseTime), np.max(PulseTime))
+            PulseTime = (PulseTime - np.max(PulseTime)/2)/np.max(PulseTime)*2
+            bins = np.arange(-1, 0.5, 0.1)
+            N = 10
+            # Legendre coeff
+            x = pub.legval(bins, np.eye(N).reshape(N, N, 1))
+            # 1st basis
+            Y = np.tile(x, len(np.unique(EventID))*len(np.unique(ChannelID))).T
+            # 2nd basis
+            X = np.repeat(X, bins.shape[0], axis=0)
+            # output
+            y = np.zeros((len(np.unique(EventID)), len(np.unique(ChannelID)), len(bins)))
 
-        N = 10
-        x = pub.legval(bins, np.eye(N).reshape(N, N, 1))
-        Y = np.tile(x, len(np.unique(EventID))*len(np.unique(ChannelID))).T
-        #basis = np.zeros_like(X)
-        
-        X = np.repeat(X, bins.shape[0], axis=0)
-        y = np.zeros((len(np.unique(EventID)), len(np.unique(ChannelID)), len(bins)))
+            basis = np.zeros((X.shape[0], X.shape[1]*Y.shape[1]))
+            for i_index, i in enumerate(np.arange(X.shape[1])):
+                for j_index, j in enumerate(np.arange(Y.shape[1])):
+                    total_index = i_index*Y.shape[1] + j_index
+                    if not total_index % 10:
+                        print(total_index)
+                    basis[:, total_index] = X[:,i_index]*Y[:,j_index]
+            X = basis
+            for k_index, k in enumerate(np.unique(EventID)): # event begin with 1
+                if not k % 100:
+                    print(k)
+                index = EventID == k
+                CID = ChannelID[index]
+                Pulse_t = PulseTime[index]
+                for i in np.unique(CID): # PMT begin with 0
+                    y[k_index, i, 1:], _ = np.histogram(Pulse_t[CID==i], bins=bins)
+            y = np.reshape(y,(-1))
+        print(y.shape,X.shape)
+        if verbose:
+            print(f'the basis shape is {X.shape}, and the dependent variable shape is {y.shape}') 
+    elif pre =='w':
+        import pandas as pd
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+        y = np.atleast_2d(y).T
+        data = np.hstack((X, y, np.ones_like(y)))
+        df = pd.DataFrame(data)
+        table = pa.Table.from_pandas(df)
+        pq.write_table(table, 'test.parquet')
+        return
 
-        for k_index, k in enumerate(np.unique(EventID)): # event begin with 1
-            if not k % 100:
-                print(k)
-            index = EventID == k
-            CID = ChannelID[index]
-            Pulse_t = PulseTime[index]
-            for i in np.unique(CID): # PMT begin with 0
-                y[k_index, i, 1:], _ = np.histogram(Pulse_t[CID==i], bins=bins)
-        y = np.reshape(y,(-1))
-
-    print(y.shape,X.shape)
-
-    if verbose:
-        print(f'the basis shape is {X.shape}, and the dependent variable shape is {y.shape}') 
-
-    # Regression methods:
-    if (alg == 'sms'):
-        import statsmodels.api as sm
-        if mode != 'combined':
+    if not pre:
+        # Regression methods:
+        if alg == 'sms':
+            import statsmodels.api as sm
             if mode == 'PE':
                 model = sm.GLM(y, X, family=sm.families.Poisson())
                 result = model.fit()
-
                 if verbose:
                     print(result.summary())
                 AIC = result.aic
                 coef_ = result.params
                 std = result.bse
-
+                
             elif mode == 'time':
                 import pandas as pd
                 data = pd.DataFrame(data = np.hstack((X, np.atleast_2d(y).T)))                
@@ -143,141 +163,148 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
                 res = mod.fit(q=0.1,)
                 coef_ = res.params
                 AIC = np.zeros_like(coef_)
-                std = np.zeros_like(coef_)
-        elif mode == 'combined':
-
-            basis = np.zeros((X.shape[0], X.shape[1]*Y.shape[1]))
-
-            for i_index, i in enumerate(np.arange(X.shape[1])):
-                for j_index, j in enumerate(np.arange(Y.shape[1])):
-                    total_index = i_index*Y.shape[1] + j_index
-                    if not total_index % 10:
-                        print(total_index)
-                    basis[:, total_index] = X[:,i_index]*Y[:,j_index]
-            # data = pd.DataFrame(data = np.hstack((basis, np.atleast_2d(y).T)))  
-            with h5py.File(output,'w') as out:        
-                out.create_dataset('X', data = basis)
-                out.create_dataset('Y', data = y)
-            print(basis.shape, y.shape)
-            breakpoint()
-            print('begin...')
-            model = sm.GLM(y, basis, family=sm.families.Poisson())
-            result = model.fit()
-
+                std = np.zeros_like(coef_)           
+                print('Waring! No AIC and std value')
+            elif mode == 'combined':
+                # data = pd.DataFrame(data = np.hstack((basis, np.atleast_2d(y).T)))  
+                with h5py.File(output,'w') as out:        
+                    out.create_dataset('X', data = X)
+                    out.create_dataset('Y', data = y)
+                print('begin...')
+                model = sm.GLM(y, X, family=sm.families.Poisson())
+                result = model.fit()
+                if verbose:
+                    print(result.summary())
+                coef_ = result.params
+                std = result.bse
+                AIC = result.aic
             if verbose:
                 print(result.summary())
-            AIC = result.aic
 
+        elif (alg == 'custom'):
+            from scipy.optimize import minimize
+            x0 = np.zeros_like(X[0]) # initial value (be careful of Zernike order)
+            
+            if mode == 'PE':
+                x0[0] = 0.8 + np.log(2) # intercept is much more important
+                result = minimize(pub.CalibPE, x0=x0, method='SLSQP', args = (y, PMTPos, X))
+            elif mode == 'time':
+                x0[0] = np.mean(y)
+                qt = 0.1
+                ts = 2.6
+                result = minimize(pub.CalibTime, x0=x0, method='SLSQP', args = (np.hstack((EventID, EventID)), y, X, qt, ts))
+            elif mode == 'combined':
+                x0 = np.zeros_like(X[0])
+                x0[0] = 0.8 + np.log(2) # intercept is much more important
+                result = minimize(pub.CalibPE, x0=x0, method='SLSQP', args = (y, PMTPos, X))
+
+            coef_ = np.array(result.x, dtype=float)
+            if verbose:
+                print(result.message)
+            AIC = np.zeros_like(coef_)
+            std = np.zeros_like(coef_)
+
+            H = pub.MyHessian(result.x, pub.CalibPE, *(y, PMTPos, X))
+            # H = pub.MyHessian(result.x, *(Q, PMTPos, X, pub.CalibTime))
+            # std = 1/np.sqrt(-np.diag(np.linalg.pinv(H1)))
+            print(coef_)
+            # print(std)
+            print('Waring! No AIC and std value, std is testing')
+
+        elif alg == 'sk':
+            from sklearn.linear_model import TweedieRegressor
+            alpha = 0.001
+            reg = TweedieRegressor(power=1, alpha=alpha, link='log', max_iter=1000, tol=1e-6, fit_intercept=False)
+            reg.fit(X, y)
+
+            # just for point data
+            # pred = reg.predict(X[0:30,0:cut+1])
+
+            print('coeff:\n', reg.coef_,'\n')
+
+            coef_ = reg.coef_ 
+
+            AIC = np.zeros_like(coef_)
+            std = np.zeros_like(coef_)
             print('Waring! No AIC and std value')
-        if verbose:
-            print(res.summary())
 
-    elif (alg == 'custom'):
-        from scipy.optimize import minimize
-        x0 = np.zeros_like(X[0]) # initial value (be careful of Zernike order)
-        
-        if mode == 'PE':
-            x0[0] = 0.8 + np.log(2) # intercept is much more important
-            result = minimize(pub.CalibPE, x0=x0, method='SLSQP', args = (y, PMTPos, X))
-        elif mode == 'time':
-            x0[0] = np.mean(y)
-            qt = 0.1
-            ts = 2.6
-            result = minimize(pub.CalibTime, x0=x0, method='SLSQP', args = (np.hstack((EventID, EventID)), y, X, qt, ts))
-        elif mode == 'combined':
-            basis = np.zeros((X.shape[0], X.shape[1]*Y.shape[1]))
-            for i_index, i in enumerate(np.arange(X.shape[1])):
-                for j_index, j in enumerate(np.arange(Y.shape[1])):
-                    total_index = i_index*Y.shape[1] + j_index
-                    if not total_index % 10:
-                        print(total_index)
-                    basis[:, total_index] = X[:,i_index]*Y[:,j_index]
-            X = basis
-            x0 = np.zeros_like(X[0])
-            x0[0] = 0.8 + np.log(2) # intercept is much more important
-            result = minimize(pub.CalibPE, x0=x0, method='SLSQP', args = (y, PMTPos, X))
+        elif alg == 'h2o':
+            import h2o
+            from h2o.estimators.gbm import H2OGradientBoostingEstimator
+            from h2o.estimators.glm import H2OGeneralizedLinearEstimator           
+            if mode != 'combined':
+                y = np.atleast_2d(y).T
+                data = np.hstack((X, y, np.ones_like(y)))
 
-        coef_ = np.array(result.x, dtype=float)
-        if verbose:
-            print(result.message)
-        AIC = np.zeros_like(coef_)
-        std = np.zeros_like(coef_)
+                h2o.init()
+                hf = h2o.H2OFrame(data)
+                predictors = hf.columns[0:-2]
+                response_col = hf.columns[-2]
 
-        H = pub.MyHessian(result.x, pub.CalibPE, *(y, PMTPos, X))
-        # H = pub.MyHessian(result.x, *(Q, PMTPos, X, pub.CalibTime))
-        # std = 1/np.sqrt(-np.diag(np.linalg.pinv(H1)))
-        print(coef_)
-        # print(std)
-        print('Waring! No AIC and std value, std is testing')
+                if mode == 'PE':
+                    #offset_col = hf.columns[-1]
+                    glm_model = H2OGeneralizedLinearEstimator(family= "poisson",
+                        #offset_column = offset_col, 
+                        lambda_ = 0,
+                        compute_p_values = True)
 
-    elif alg == 'sk':
-        from sklearn.linear_model import TweedieRegressor
-        alpha = 0.001
-        reg = TweedieRegressor(power=1, alpha=alpha, link='log', max_iter=1000, tol=1e-6, fit_intercept=False)
-        reg.fit(X, y)
+                    glm_model.train(predictors, response_col, training_frame=hf)
 
-        # just for point data
-        # pred = reg.predict(X[0:30,0:cut+1])
+                    coef_table = glm_model._model_json['output']['coefficients_table']
+                    coef_ = glm_model.coef()
 
-        print('coeff:\n', reg.coef_,'\n')
+                elif mode == 'time':
+                    gbm = H2OGradientBoostingEstimator(distribution="quantile", seed = 1234,
+                                                      stopping_metric = "mse", stopping_tolerance = 1e-4)
+                    gbm.train(x = predictors, y = response_col, training_frame = hf)
+                    breakpoint()
+                    print(gbm)
+                    exit()
+            elif mode == 'combined':
+                y = np.atleast_2d(y).T
+                data = np.hstack((X, Y, y, np.ones_like(y)))
 
-        coef_ = reg.coef_ 
+                h2o.init() 
+                hf = h2o.H2OFrame(data)
+                predictors = hf.columns[0:-2]
+                response_col = hf.columns[-2]           
 
-        AIC = np.zeros_like(coef_)
-        std = np.zeros_like(coef_)
-        print('Waring! No AIC and std value')
+            if verbose:
+                print(coef_)
+                if basis == 'Zernike':
+                    print(f'Regession coef shape is f{np.array(coef_).shape}, Zernike shape is {nk}')
+            coef_ = coef_table['coefficients']
+            std = coef_table['std_error']
+            AIC = glm_model.aic()
 
-    elif alg == 'h2o':
+            h2o.cluster().shutdown()
+
+    elif pre == 'r':
         import h2o
         from h2o.estimators.gbm import H2OGradientBoostingEstimator
         from h2o.estimators.glm import H2OGeneralizedLinearEstimator           
-        if mode != 'combined':
-            y = np.atleast_2d(y).T
-            data = np.hstack((X, y, np.ones_like(y)))
+        h2o.init()
+        hf = h2o.import_file("test.parquet")
+        predictors = hf.columns[0:-2]
+        response_col = hf.columns[-2]
 
-            h2o.init()
-            hf = h2o.H2OFrame(data)
-            predictors = hf.columns[0:-2]
-            response_col = hf.columns[-2]
+        if mode == 'PE':
+            #offset_col = hf.columns[-1]
+            glm_model = H2OGeneralizedLinearEstimator(family= "poisson",
+                #offset_column = offset_col, 
+                lambda_ = 0,
+                compute_p_values = True)
 
-            if mode == 'PE':
-                #offset_col = hf.columns[-1]
-                glm_model = H2OGeneralizedLinearEstimator(family= "poisson",
-                    #offset_column = offset_col, 
-                    lambda_ = 0,
-                    compute_p_values = True)
-
-                glm_model.train(predictors, response_col, training_frame=hf)
-
-                coef_table = glm_model._model_json['output']['coefficients_table']
-                coef_ = glm_model.coef()
-
-            elif mode == 'time':
-                gbm = H2OGradientBoostingEstimator(distribution="quantile", seed = 1234,
-                                                  stopping_metric = "mse", stopping_tolerance = 1e-4)
-                gbm.train(x = predictors, y = response_col, training_frame = hf)
-                breakpoint()
-                print(gbm)
-                exit()
+            glm_model.train(predictors, response_col, training_frame=hf)
+        
         elif mode == 'combined':
-            y = np.atleast_2d(y).T
-            data = np.hstack((X, Y, y, np.ones_like(y)))
+            #offset_col = hf.columns[-1]
+            glm_model = H2OGeneralizedLinearEstimator(family= "poisson",
+                #offset_column = offset_col, 
+                lambda_ = 0,
+                compute_p_values = True)
 
-            h2o.init() 
-            hf = h2o.H2OFrame(data)
-            breakpoint()
-            predictors = hf.columns[0:-2]
-            response_col = hf.columns[-2]           
-
-        if verbose:
-            print(coef_)
-            if basis == 'Zernike':
-                print(f'Regession coef shape is f{np.array(coef_).shape}, Zernike shape is {nk}')
-        coef_ = coef_table['coefficients']
-        std = coef_table['std_error']
-        AIC = glm_model.aic()
-
-        h2o.cluster().shutdown()
+            glm_model.train(predictors, response_col, training_frame=hf)
 
         if (figure=='ON'):
             import matplotlib.pyplot as plt
@@ -334,7 +361,9 @@ parser.add_argument('--figure', dest='figure', metavar='filename[*.png]', type=s
 parser.add_argument('--offset', dest='offset', metavar='filename[*.h5]', type=str, default=False,
                     help='Whether use offset data, default is 0')
 
+parser.add_argument('--pre', dest='pre', type=str, choices=['w', 'r', False], default=False,
+                    help="Whether read/write data from/to parquet")
 args = parser.parse_args()
 print(args.filename)
 
-main_Calib(args.filename, args.output, args.mode, args.alg, args.basis, args.order, args.figure, args.verbose, args.offset)
+main_Calib(args.filename, args.output, args.mode, args.alg, args.basis, args.order, args.figure, args.verbose, args.offset, args.pre)
