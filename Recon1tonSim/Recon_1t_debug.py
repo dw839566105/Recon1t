@@ -37,12 +37,12 @@ def readtpl():
     return tp, bins
 
 def load_coeff():
-    h = tables.open_file('../calib/PE_coeff_1t_29_80.h5','r')
+    h = tables.open_file('../calib/h5/PE_coeff_1t_29_80.h5','r')
     coeff_pe = h.root.coeff_L[:]
     h.close()
     cut_pe, fitcut_pe = coeff_pe.shape
 
-    h = tables.open_file('../calib/Time_coeff2_1t_0.1.h5','r')
+    h = tables.open_file('../calib/h5/Time_coeff2_1t_0.1.h5','r')
     coeff_time = h.root.coeff_L[:]
     h.close()
     cut_time, fitcut_time = coeff_time.shape

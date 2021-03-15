@@ -246,7 +246,7 @@ plt.title('Run0258')
 plt.savefig('Run0258_10.pdf')
 
 
-# In[25]:
+# In[37]:
 
 
 plt.hist(z/r)
@@ -256,6 +256,18 @@ plt.hist(z/r)
 
 
 np.log(26+1.6/1.6)*1.6
+
+
+# In[45]:
+
+
+17/(2*10**8)
+
+
+# In[46]:
+
+
+np.exp(-17/17)
 
 
 # In[ ]:

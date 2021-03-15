@@ -1,13 +1,12 @@
 .PHONY: all
 
-E:=K40
-prog:=Recon_1t_new2
-#path:=/mnt/stage/douwei/Simulation/1t_root/$(E)/
+E:=point_10
+prog:=Recon_1t_da
+path:=/mnt/stage/douwei/Simulation/1t_root/$(E)/
 #path:=/mnt/stage/xuewei/work1/JinpingPackage/JSAP-install/Simulation/K40Sim/result/WindowLog/
-path:=/mnt/stage/xuewei/work1/JinpingPackage/JSAP-install/Simulation/K40Sim/result/WindowLog/
-save:=result_1t_$(E)_$(prog)_new
+save:=result_1t_$(E)_$(prog)_new_PE
 #sim:=$(wildcard $(path)1t_*.root)
-sim:=$(wildcard $(path)*.root)
+sim:=$(wildcard $(path)1t_??.???.root)
 dst:=$(sim:$(path)%.root=$(save)/%.h5)
 all: $(dst)
 
