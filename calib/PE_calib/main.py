@@ -12,7 +12,7 @@ np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
 # global:
 PMTPos = pub.ReadJPPMT()
 
-def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offset, pre):
+def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offset, qt, pre, split):
     '''
     # main program
     # input: radius: %+.3f, 'str' (in makefile, str is default)
@@ -21,7 +21,7 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
     #        cut_max: cut off of Legendre
     # output: the gathered result EventID, ChannelID, x, y, z
     '''
-    if not pre:
+    if pre != 'r':
         print('begin reading file', flush=True)
         EventID, ChannelID, Q, PETime, photonTime, PulseTime, dETime, x, y, z = pub.ReadFile(filename)
         VertexTruth = (np.vstack((x, y, z))/1e3).T
@@ -79,7 +79,7 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
             # PulseTime = (PulseTime - np.max(PulseTime)/2)/np.max(PulseTime)*2
             # print(np.min(PulseTime), np.max(PulseTime))
             PulseTime = (PulseTime - np.max(PulseTime)/2)/np.max(PulseTime)*2
-            bins = np.arange(-1, 0.5, 0.1)
+            bins = np.arange(-1, 0.05, 0.1)
             N = 10
             # Legendre coeff
             x = pub.legval(bins, np.eye(N).reshape(N, N, 1))
@@ -89,7 +89,7 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
             X = np.repeat(X, bins.shape[0], axis=0)
             # output
             y = np.zeros((len(np.unique(EventID)), len(np.unique(ChannelID)), len(bins)))
-
+            '''
             basis = np.zeros((X.shape[0], X.shape[1]*Y.shape[1]))
             for i_index, i in enumerate(np.arange(X.shape[1])):
                 for j_index, j in enumerate(np.arange(Y.shape[1])):
@@ -98,7 +98,11 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
                         print(total_index)
                     basis[:, total_index] = X[:,i_index]*Y[:,j_index]
             X = basis
+            '''
+            split_index = np.unique(EventID).shape[0]
             for k_index, k in enumerate(np.unique(EventID)): # event begin with 1
+                if k_index > split_index * split:
+                    break
                 if not k % 100:
                     print(k)
                 index = EventID == k
@@ -107,18 +111,37 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
                 for i in np.unique(CID): # PMT begin with 0
                     y[k_index, i, 1:], _ = np.histogram(Pulse_t[CID==i], bins=bins)
             y = np.reshape(y,(-1))
-        print(y.shape,X.shape)
         if verbose:
-            print(f'the basis shape is {X.shape}, and the dependent variable shape is {y.shape}') 
-    elif pre =='w':
+            print(f'the basis shape is {X.shape}, and the dependent variable shape is {y.shape}')
+    if pre =='w':
+        if split != 1:
+            split_index = np.int(split*y.shape[0])
+            X = X[:split_index]
+            Y = Y[:split_index]
+            y = y[:split_index]
         import pandas as pd
         import pyarrow as pa
         import pyarrow.parquet as pq
         y = np.atleast_2d(y).T
-        data = np.hstack((X, y, np.ones_like(y)))
-        df = pd.DataFrame(data)
+        #data = np.hstack((X, y, np.ones_like(y)))
+        df_X = pd.DataFrame(X)
+        X_names = []
+        for i in df_X.columns:
+            X_names.append('X' + str(i))
+        df_X.columns = X_names    
+        
+        df_Y = pd.DataFrame(Y)
+        Y_names = []
+        for i in df_Y.columns:
+            Y_names.append('Y' + str(i))
+        df_Y.columns = Y_names
+        
+        df_y = pd.DataFrame(y)
+        df_y.columns = ['output']
+        df = pd.concat([df_X, df_Y, df_y], axis=1)
         table = pa.Table.from_pandas(df)
-        pq.write_table(table, 'test.parquet')
+        
+        pq.write_table(table, 'test1.parquet')
         return
 
     if not pre:
@@ -126,7 +149,7 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
         if alg == 'sms':
             import statsmodels.api as sm
             if mode == 'PE':
-                model = sm.GLM(y, X, family=sm.families.Poisson())
+                model = sm.GLM(y, X, family=sm.families.Poisson(), fit_intercept=False)
                 result = model.fit()
                 if verbose:
                     print(result.summary())
@@ -160,8 +183,8 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
 
                 mod = sm.formula.quantreg(strs, data[cname])
 
-                res = mod.fit(q=0.1,)
-                coef_ = res.params
+                result = mod.fit(q=qt,)
+                coef_ = result.params
                 AIC = np.zeros_like(coef_)
                 std = np.zeros_like(coef_)           
                 print('Waring! No AIC and std value')
@@ -284,10 +307,19 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
         from h2o.estimators.gbm import H2OGradientBoostingEstimator
         from h2o.estimators.glm import H2OGeneralizedLinearEstimator           
         h2o.init()
-        hf = h2o.import_file("test.parquet")
-        predictors = hf.columns[0:-2]
-        response_col = hf.columns[-2]
-
+        hf = h2o.import_file("electron-1.parquet")
+        pairs = []
+        for i in hf.columns:
+            for j in hf.columns:
+                if (i.startswith('Z') and j.startswith('L')):
+                    if ((i!='X0') and (j != 'Y0')):
+                        pairs.append((i,j))
+        predictors = hf.columns[2:]
+        response_col = hf.columns[0]
+        
+        print(predictors)
+        print(response_col)
+        print(pairs)
         if mode == 'PE':
             #offset_col = hf.columns[-1]
             glm_model = H2OGeneralizedLinearEstimator(family= "poisson",
@@ -301,11 +333,18 @@ def main_Calib(filename, output, mode, alg, basis, order, figure, verbose, offse
             #offset_col = hf.columns[-1]
             glm_model = H2OGeneralizedLinearEstimator(family= "poisson",
                 #offset_column = offset_col, 
+                interaction_pairs=pairs,
                 lambda_ = 0,
+                #remove_collinear_columns = True, 
                 compute_p_values = True)
 
             glm_model.train(predictors, response_col, training_frame=hf)
-
+        breakpoint()
+        coef_table = glm_model._model_json['output']['coefficients_table']
+        coef_ = coef_table['coefficients']
+        std = coef_table['std_error']
+        AIC = glm_model.aic()
+        print(f'Regession coef is f{np.array(coef_)}')             
         if (figure=='ON'):
             import matplotlib.pyplot as plt
             L, K = 500, 500
@@ -361,9 +400,15 @@ parser.add_argument('--figure', dest='figure', metavar='filename[*.png]', type=s
 parser.add_argument('--offset', dest='offset', metavar='filename[*.h5]', type=str, default=False,
                     help='Whether use offset data, default is 0')
 
+parser.add_argument('--qt', type=float, default=0.1, 
+                    help='quantile value')
+
 parser.add_argument('--pre', dest='pre', type=str, choices=['w', 'r', False], default=False,
                     help="Whether read/write data from/to parquet")
+
+parser.add_argument('--split', dest='split', type=float, default=1,
+                    help="use how much data")
 args = parser.parse_args()
 print(args.filename)
 
-main_Calib(args.filename, args.output, args.mode, args.alg, args.basis, args.order, args.figure, args.verbose, args.offset, args.pre)
+main_Calib(args.filename, args.output, args.mode, args.alg, args.basis, args.order, args.figure, args.verbose, args.offset, args.qt, args.pre, args.split)

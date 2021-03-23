@@ -6,7 +6,8 @@ import os,sys
 import tables
 import scipy.io as scio
 #import matplotlib.pyplot as plt
-import uproot, argparse
+import uproot3 as uproot
+import argparse
 from scipy.optimize import minimize
 from scipy import interpolate
 #from numpy.polynomial import legendre as LG
@@ -148,7 +149,7 @@ def Likelihood_Time(z, x, T0, coeff, fired_PMT, time_array, cut):
     T_i = np.dot(x, k)
     
     # Likelihood
-    L = - np.nansum(Likelihood_quantile(time_array, T_i[:,0], 0.1, 2.6))
+    L = np.nansum(Likelihood_quantile(time_array, T_i[:,0], 0.1, 2.6))
     return L
 
 def Likelihood_quantile(y, T_i, tau, ts):
@@ -161,7 +162,7 @@ def Likelihood_quantile(y, T_i, tau, ts):
     #nml = tau*(1-tau)/ts
     #L_norm = np.exp(-np.atleast_2d(L).T) * nml / ts
     #L = np.sum(np.log(L_norm), axis=1)
-    L0 =  - L/ts
+    L0 = L/ts
     return L0
 
 def recon(fid, fout, *args):
@@ -283,6 +284,7 @@ def recon(fid, fout, *args):
             x0_in[0][0] = 0.8 + np.log(np.sum(pe_array)/60)
             x0_in[0][4] = np.quantile(time_array,0.1)
             x0_in[0][1:4] = c2r(bins[index]/1000/shell)
+            # x0_in[0][1:4] = c2r(np.array((0.35, 0, 0))/0.65)
             result_in = minimize(Likelihood, x0_in, method='SLSQP',bounds=((E_min, E_max), (0, 1), (None, None), (None, None), (None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
             z, x = Calc_basis(result_in.x, PMT_pos, cut_pe)
             L, E_in = Likelihood_PE(z, x, coeff_pe, pe_array, cut_pe)
@@ -335,7 +337,7 @@ def recon(fid, fout, *args):
             # 0-th order (Energy intercept)
             base_in = legval(result_in.x[1], coeff_pe.T)
             base_out = legval(result_out.x[1], coeff_pe.T)
-
+            
             print('-'*60)
             print(f'inner: {np.exp(E_in - base_in[0] + np.log(2))}')
             print(f'outer: {np.exp(E_out - base_out[0] + np.log(2))}')

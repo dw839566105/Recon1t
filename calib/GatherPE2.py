@@ -6,10 +6,10 @@ import h5py
 
 def LoadDataPE_TW(path, radius, order):
     data = []
-    filename = path + 'file_' + radius + '.h5'
+    filename = path + 'PE_30_1t_' + radius + '.h5'
     h = tables.open_file(filename,'r')
     coeff = 'coeff' + str(order)
-    hess = 'hess' + str(order)
+    std = 'std' + str(order)
     data = eval('np.array(h.root.'+ coeff + '[:])')
     h.close()
     return data
@@ -39,9 +39,8 @@ def main_photon_compact(path, order):
     return rd, coeff_pe
 
 def main(order=5, fit_order=10):
-    rd1, coeff_pe1 = main_photon_sparse('coeff_pe_1t_reflection0.00_30/',order)
-    rd2, coeff_pe2 = main_photon_compact('coeff_pe_1t_compact_30/',order)
-    coeff_pe2[0] = coeff_pe2[0] + np.log(20000/4285)
+    rd1, coeff_pe1 = main_photon_sparse('coeff_point_10_photon_2MeV/',order)
+    rd2, coeff_pe2 = main_photon_compact('coeff_point_10_photon_2MeV/',order)
     rd = np.hstack((rd1, rd2))
     coeff_pe = np.hstack((coeff_pe1, coeff_pe2))
     coeff_L = np.zeros((order, fit_order + 1))

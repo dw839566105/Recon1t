@@ -6,7 +6,7 @@ import h5py
 
 def LoadDataPE_TW(path, radius, order):
     data = []
-    filename = path + 'file_' + radius + '.h5'
+    filename = path + '1t_' + radius + '.h5'
     h = tables.open_file(filename,'r')
     coeff = 'coeff' + str(order)
     hess = 'hess' + str(order)
@@ -26,7 +26,7 @@ def main_photon(path, order):
     coeff_pe = np.reshape(coeff_pe,(-1,np.size(rd)),order='F')
     return rd, coeff_pe
 def main(order=5, fit_order=10):
-    rd, coeff_pe = main_photon('coeff_pe_1t_8.0MeV_shell_1/',order)
+    rd, coeff_pe = main_photon('coeff_point_10/',order)
     rd = np.array(rd)
     coeff_pe = np.array(coeff_pe)
     coeff_L_in = np.zeros((order, fit_order + 1))

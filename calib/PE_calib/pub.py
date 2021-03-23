@@ -69,7 +69,7 @@ def LegendreCoeff(PMT_pos, vertex, cut, Legendre=True):
             /np.sqrt(np.sum(vertex**2, axis=1)*np.sum(PMT_pos**2,axis=1))
     else:
         # make r=0 as a boundry, it should be improved
-        cos_theta = np.ones(size)
+        cos_theta = np.zeros(size)
     
     if(np.sum(np.isnan(cos_theta))):
         print('NaN value in cos theta!')

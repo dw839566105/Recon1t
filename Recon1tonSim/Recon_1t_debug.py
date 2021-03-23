@@ -6,7 +6,8 @@ import os,sys
 import tables
 import scipy.io as scio
 import matplotlib.pyplot as plt
-import uproot, argparse
+import uproot3 as uproot
+import argparse
 from scipy.optimize import minimize
 from scipy import interpolate
 from numpy.polynomial import legendre as LG
@@ -71,8 +72,8 @@ def Likelihood(vertex, *args):
     '''
     coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe = args
     L1 = Likelihood_PE(vertex, *(coeff_pe, PMT_pos, pe_array, cut_pe))
-    #L2 = Likelihood_Time(vertex, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time))
-    return L1
+    L2 = Likelihood_Time(vertex, *(coeff_time, PMT_pos, fired_PMT, time_array, cut_time))
+    return L1 + L2
 
 def Likelihood_PE(vertex, *args):
     coeff, PMT_pos, event_pe, cut = args
@@ -103,6 +104,7 @@ def Likelihood_PE(vertex, *args):
     
     k[0] = vertex[0]
     expect = np.exp(np.dot(x,k))
+
     a1 = expect**y
     a2 = np.exp(-expect)
     a1[(a1<1e-20) & (np.isnan(a1))] = 1e-20
@@ -271,7 +273,11 @@ def recon(fid, fout, *args):
                 fired_PMT = np.hstack((fired_PMT, ch*np.ones(np.size(pk))))
             except:
                 pass
-        if (np.sum(pe_array)!=0) & (event_count==149):
+            fired_PMT = fired_PMT.astype(int)
+        if (np.sum(pe_array)!=0) & (event_count==289):
+            
+            print(Likelihood(np.array(( 1.214, 0.892, 1.574, 0.235, 304.787)), *(coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe)))
+
             for ii in np.arange(np.size(pe_array)):
                 truthdata['pes'] = pe_array[ii]
                 truthdata.append()
@@ -284,7 +290,7 @@ def recon(fid, fout, *args):
             L = np.nansum(-corr + np.log(corr)*pe_array, axis=1)
             index = np.where(L == np.max(L))[0][0]
 
-            fired_PMT = fired_PMT.astype(int)
+
             # initial result
             result_vertex = np.empty((0,5)) # reconstructed vertex
 
@@ -301,6 +307,8 @@ def recon(fid, fout, *args):
             a = c2r(x0_in[0][1:4])
             x0_in = np.hstack((x0_in[0][0], a, x0_in[0][4]))
             result_in = minimize(Likelihood, x0_in, method='SLSQP',bounds=((E_min, E_max), (-1, 1), (None, None), (None, None), (None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
+
+            print(result_in.x)
 
             # new added avoid boundry:
             in2 = r2c(result_in.x[1:4])*shell
@@ -325,11 +333,11 @@ def recon(fid, fout, *args):
             recondata['E_sph_out'] = result_out.x[0]
             recondata['success_out'] = result_out.success
             recondata['Likelihood_out'] = result_out.fun
-
+            print('haha',x0_out, result_out.x)
             #### truth
             
             x0_truth = x0_in.copy()
-            x0_truth[1:4]=c2r(np.array((0,0,0.01/0.65)))
+            x0_truth[1:4]=c2r(np.array((0.35/0.65, 0, 0)))
             result_truth = minimize(Likelihood, x0_truth, method='SLSQP',bounds=((E_min, E_max), (-1,1), (None, None), (None, None),(None, None)), args = (coeff_time, coeff_pe, PMT_pos, fired_PMT, time_array, pe_array, cut_time, cut_pe))
 
             truth2 = r2c(result_truth.x[1:4]) * shell
